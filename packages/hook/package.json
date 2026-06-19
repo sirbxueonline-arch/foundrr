@@ -1,0 +1,16 @@
+{
+  "name": "@mission-control/hook",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Zero-dependency Claude Code hook bridge. Bundled to a single file; uses only Node built-ins.",
+  "scripts": {
+    "build": "esbuild src/hook.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/hook.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.2"
+  }
+}

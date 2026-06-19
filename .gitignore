@@ -1,0 +1,22 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+*.log
+
+# Local runtime data (lives in ~/.mission-control by default; ignore if ever placed in-repo)
+.mission-control/
+*.db-shm
+*.db-wal
+
+# Env
+.env
+.env.local
+
+# build output / unrelated tooling artifacts
+.next/
+ruvector.db
+agentdb.rvf
+agentdb.rvf.lock
+*.rvf
+*.rvf.lock

@@ -1,0 +1,117 @@
+/* Mission Control — telemetry console design system (Tailwind v4) */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+/* ── Theme tokens ──────────────────────────────────────────────────────────
+   Exact palette from the build brief §8. Mapped to Tailwind v4 design tokens
+   so utilities like `bg-void`, `text-muted`, `border-line` resolve. */
+@theme {
+  --color-void: #0d1014;
+  --color-panel: #151b23;
+  --color-line: #232c37;
+  --color-text: #e6eaf0;
+  --color-muted: #8a95a3;
+  --color-faint: #5b6573;
+  --color-signal: #f2a23c;
+  --color-cool: #56b6c2;
+  --color-ok: #74c69d;
+  --color-alert: #e5645a;
+
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-void);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Visible keyboard focus rings everywhere (quality floor). */
+:focus-visible {
+  outline: 2px solid var(--color-cool);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ── Utility / component classes ────────────────────────────────────────── */
+@layer components {
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum" 1; /* tabular numerals → no layout shift on counts */
+  }
+
+  /* Raised panel surface with a hairline border. */
+  .panel {
+    background-color: var(--color-panel);
+    border: 1px solid var(--color-line);
+    border-radius: 10px;
+  }
+
+  .hairline {
+    border-color: var(--color-line);
+  }
+
+  /* Tiny faint caption under stats / labels. */
+  .caption {
+    font-size: 0.625rem;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+  }
+}
+
+/* ── Signature motion ───────────────────────────────────────────────────────
+   Amber only appears when something is active. Reduced-motion users get a
+   static dot/line (no opacity/box-shadow animation). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes mc-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-signal) 55%, transparent);
+    }
+    50% {
+      opacity: 0.65;
+      box-shadow: 0 0 10px 3px color-mix(in srgb, var(--color-signal) 35%, transparent);
+    }
+  }
+
+  @keyframes mc-sweep {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .pulse-dot {
+    animation: mc-pulse 2.4s ease-in-out infinite;
+  }
+
+  .sweep-line {
+    animation: mc-sweep 6s linear infinite;
+  }
+}
+
+/* Reduced-motion fallbacks: a steady glow, no movement. */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot {
+    box-shadow: 0 0 6px 1px color-mix(in srgb, var(--color-signal) 40%, transparent);
+  }
+  .sweep-line {
+    opacity: 0.5;
+  }
+}

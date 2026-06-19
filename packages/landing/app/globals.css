@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/* Telemetry console design tokens */
+:root {
+  --void: #0d1014;
+  --panel: #151b23;
+  --line: #232c37;
+  --text: #e6eaf0;
+  --muted: #8a95a3;
+  --faint: #5b6573;
+  --signal: #f2a23c;
+  --cool: #56b6c2;
+  --ok: #74c69d;
+  --alert: #e5645a;
+}
+
+@theme inline {
+  --color-void: var(--void);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-signal: var(--signal);
+  --color-cool: var(--cool);
+  --color-ok: var(--ok);
+  --color-alert: var(--alert);
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular",
+    monospace;
+  --font-display: var(--font-space-grotesk), "Inter", system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--void);
+  color: var(--text);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle scanline / grid backdrop for the console feel */
+.console-grid {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: center;
+  -webkit-mask-image: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    black 0%,
+    transparent 75%
+  );
+  mask-image: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    black 0%,
+    transparent 75%
+  );
+  opacity: 0.5;
+}
+
+/* Amber glow for live numbers */
+.signal-glow {
+  text-shadow:
+    0 0 18px rgba(242, 162, 60, 0.45),
+    0 0 42px rgba(242, 162, 60, 0.18);
+}
+
+.signal-glow-soft {
+  text-shadow: 0 0 14px rgba(242, 162, 60, 0.3);
+}
+
+/* Breathing pulse dot for live state */
+.pulse-dot {
+  position: relative;
+}
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: var(--signal);
+  animation: pulse-ring 2.4s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* Header sweep line */
+.sweep {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(242, 162, 60, 0.7),
+    transparent
+  );
+  animation: sweep-move 6s linear infinite;
+}
+
+@keyframes sweep-move {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .pulse-dot::after,
+  .sweep {
+    animation: none;
+  }
+  .sweep {
+    opacity: 0.4;
+  }
+}
+
+/* Focus visibility for keyboard nav */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--cool);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -1,0 +1,30 @@
+{
+  "name": "mission-control",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local single-machine command center for supervising Claude Code from anywhere",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/shared",
+    "packages/daemon",
+    "packages/web",
+    "packages/hook"
+  ],
+  "bin": {
+    "mc": "packages/daemon/dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "npm run build -w @mission-control/shared && npm run build -w @mission-control/hook && npm run build -w @mission-control/web && npm run build -w @mission-control/daemon",
+    "build:shared": "npm run build -w @mission-control/shared",
+    "build:daemon": "npm run build -w @mission-control/daemon",
+    "build:web": "npm run build -w @mission-control/web",
+    "build:hook": "npm run build -w @mission-control/hook",
+    "dev:daemon": "npm run dev -w @mission-control/daemon",
+    "dev:web": "npm run dev -w @mission-control/web",
+    "typecheck": "npm run typecheck -w @mission-control/shared && npm run typecheck -w @mission-control/daemon && npm run typecheck -w @mission-control/web",
+    "mc": "node packages/daemon/dist/cli/index.js"
+  }
+}
