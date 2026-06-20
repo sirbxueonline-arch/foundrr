@@ -1,3 +1,4 @@
+import { Nav } from "@/components/Nav";
 import { Hero } from "@/components/Hero";
 import { Counters } from "@/components/Counters";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -21,6 +22,7 @@ export default async function Page() {
 
   return (
     <main>
+      <Nav />
       <Hero />
       <Counters initial={initial} />
       <Leaderboard initial={initial} />

@@ -56,23 +56,36 @@ Dashboard ──REST──▶ port scan / git / server control
 ## Quick start
 
 ```bash
-npm install
-npm run build
-mc start          # or: node packages/daemon/dist/cli/index.js start
+npm install && npm run build   # install deps + compile every package
+npm link                       # put `mc` on your PATH (global)
+mc setup                       # guided first-run: token + hooks + URL + next steps
+mc start                       # start the daemon; open the printed URL
 ```
 
-`mc start` prints a boxed banner with the dashboard URL including `?token=…`.
-Open that URL in a browser.
+That's it. **`mc setup` replaces the old manual multi-step dance** — it creates
+your home dir + access token, installs the Claude Code hooks (backing up
+`~/.claude/settings.json` first), prints the dashboard URL with `?token=…`, and
+lists the optional follow-ups. It's **idempotent**, so re-running it is safe and
+just reprints the current state.
 
-Then wire the hooks so your agents light up:
+`mc setup` finishes by pointing you at the two extras most people want:
 
-```bash
-mc hooks install   # writes the hook into ~/.claude/settings.json (backs it up first)
-mc doctor          # green/red preflight checklist
-```
+- **The shared leash** — link the Founder Telegram bot **@foundrremotebot** with
+  `mc telegram link`. One bot serves every install: no BotFather, no token. You
+  get a single-use code to message the bot, and then you can approve/deny Claude
+  Code's permission prompts from your phone.
+- **The model picker** — `mc config model <key>` records which agent/model you
+  run, which feeds the global leaderboard (`mc config model show` lists the
+  valid keys).
 
-Prefer to paste the hooks block yourself? `mc hooks print` emits a paste-ready
-JSON block for `~/.claude/settings.json`.
+> Not linking `mc` globally? Every command also works as
+> `node packages/daemon/dist/cli/index.js <command>` (e.g.
+> `node packages/daemon/dist/cli/index.js setup`).
+
+Prefer to paste the hooks block yourself instead of letting `mc setup` install
+it? `mc hooks print` emits a paste-ready JSON block for
+`~/.claude/settings.json`. Run `mc doctor` any time for a green/red preflight
+checklist.
 
 ### Environment overrides
 
@@ -110,19 +123,33 @@ Mobile = a segmented Agents / Servers / Terminal switch.
 
 ## Telegram remote-approve (the crown jewel)
 
+The fastest path is the **shared Founder bot** — one cloud bot serves every
+install, so there's no BotFather and no token to manage:
+
 ```bash
+mc telegram link   # prints a single-use code; message @foundrremotebot with it
+mc start
+```
+
+`mc telegram link` gives you a code; open Telegram, message **@foundrremotebot**,
+and send `/link <CODE>`. (`mc setup` points you here too.)
+
+Prefer your **own** bot? Use "own" mode with a BotFather token instead:
+
+```bash
+mc telegram mode own
 mc telegram setup <botToken>   # token from @BotFather
 mc start
 ```
 
-Then, from your phone, message the bot:
+Then, from your phone, message your own bot:
 
 ```
 /link <ACCESS_TOKEN>
 ```
 
 The access token is the one in the dashboard URL after `?token=`, or in
-`~/.mission-control/token`. After linking:
+`~/.mission-control/token`. After linking (either bot):
 
 - Gated tool calls **buzz your phone** with **Approve / Deny** buttons. The
   default policy gates **every Bash command** and **every file-write tool**
@@ -252,6 +279,7 @@ Telegram with `/link <NEW_TOKEN>` if you use the leash.
 
 | Command                    | What it does                                                    |
 | -------------------------- | --------------------------------------------------------------- |
+| `mc setup`                 | Guided first-run: token + hooks + URL + next steps (idempotent) |
 | `mc start`                 | Start the daemon and print the dashboard URL                    |
 | `mc hooks print`           | Print a paste-ready hooks block for `~/.claude/settings.json`   |
 | `mc hooks install`         | Install the hooks into `~/.claude/settings.json` (with backup)  |

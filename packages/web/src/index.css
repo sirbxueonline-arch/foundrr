@@ -70,6 +70,18 @@ body {
     text-transform: uppercase;
     color: var(--color-faint);
   }
+
+  /* Column / surface heading used at the top of a panel group. Quiet by design
+     — it orients the eye without competing with the live telemetry below it. */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
 }
 
 /* ── Signature motion ───────────────────────────────────────────────────────
@@ -79,12 +91,12 @@ body {
   @keyframes mc-pulse {
     0%,
     100% {
-      opacity: 1;
-      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-signal) 55%, transparent);
+      opacity: 0.95;
+      box-shadow: 0 0 3px 0 color-mix(in srgb, var(--color-signal) 45%, transparent);
     }
     50% {
-      opacity: 0.65;
-      box-shadow: 0 0 10px 3px color-mix(in srgb, var(--color-signal) 35%, transparent);
+      opacity: 0.7;
+      box-shadow: 0 0 7px 2px color-mix(in srgb, var(--color-signal) 28%, transparent);
     }
   }
 
@@ -98,7 +110,7 @@ body {
   }
 
   .pulse-dot {
-    animation: mc-pulse 2.4s ease-in-out infinite;
+    animation: mc-pulse 2.8s ease-in-out infinite;
   }
 
   .sweep-line {

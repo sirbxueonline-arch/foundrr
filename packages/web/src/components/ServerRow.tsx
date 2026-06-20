@@ -18,6 +18,7 @@
 import type { DetectedServer, RegisteredServer } from "@mission-control/shared";
 import { Pulse } from "./Pulse";
 import { truncate } from "../lib/format";
+import { isWebServer } from "../lib/serverKind";
 
 export type ServerAction =
   | "open"
@@ -96,6 +97,11 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
   // When set, a 0.0.0.0 reverse proxy is live for this server — preview is on.
   const proxyPort = detected?.exposedProxyPort;
   const isExposed = proxyPort !== undefined;
+  // Only offer browser affordances (Open / Preview) for things that actually
+  // look like a web server — not background system services (ControlCenter,
+  // Spotify, …) that merely hold a port. STOP is still allowed for anything.
+  const webPreviewable = isWebServer(entry);
+  const showOpen = port !== undefined && webPreviewable;
 
   return (
     <article className="panel flex flex-col gap-2 p-3" aria-label={`Server ${ariaName}`}>
@@ -135,9 +141,9 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
 
         {/* Controls. Fixed-size buttons; disabled (not hidden) while pending. */}
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-          {port !== undefined ? (
+          {showOpen ? (
             <a
-              href={openUrl(port)}
+              href={openUrl(port as number)}
               target="_blank"
               rel="noreferrer noopener"
               className="mono rounded-md px-2 py-1 text-[0.625rem] font-medium tracking-wider transition-colors"
@@ -154,8 +160,9 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
 
           {/* Preview: the always-works path. Exposes a 0.0.0.0 reverse proxy to
               this (often localhost-only) dev server, then opens it on the
-              dashboard host so a phone over LAN/Tailscale can reach it. */}
-          {port !== undefined && !isExposed ? (
+              dashboard host so a phone over LAN/Tailscale can reach it. Only
+              for things that look like a web server. */}
+          {showOpen && !isExposed ? (
             <ControlButton
               label={pending ? "PREVIEW…" : "PREVIEW"}
               color="var(--color-signal)"
@@ -164,7 +171,7 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
             />
           ) : null}
 
-          {port !== undefined && isExposed ? (
+          {showOpen && isExposed ? (
             <>
               <a
                 href={openUrl(proxyPort)}
@@ -244,18 +251,30 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
         </span>
       </div>
 
-      {/* Preview status: where it's reachable, or a hint that it always works. */}
-      {port !== undefined && isExposed ? (
+      {/* Preview status: where it's reachable, or a hint that it always works.
+          The hint only appears where Preview is actually offered (web servers),
+          so non-web system services never advertise a preview they don't have. */}
+      {isExposed ? (
         <p className="mono text-[0.625rem] leading-tight" style={{ color: "var(--color-signal)" }}>
           Previewing → :{proxyPort}
         </p>
-      ) : port !== undefined ? (
+      ) : showOpen ? (
         <p
           className="text-[0.625rem] leading-tight"
           style={{ color: "var(--color-faint)" }}
           title="Preview opens a 0.0.0.0 reverse proxy, so it reaches the dev server even when it only listens on localhost."
         >
           Preview works even when this server is localhost-only.
+        </p>
+      ) : detected ? (
+        // Detected, but doesn't look like a web server — explain the missing
+        // Open/Preview so its absence reads as intentional, not broken.
+        <p
+          className="text-[0.625rem] leading-tight"
+          style={{ color: "var(--color-faint)" }}
+          title="This looks like a background system service, not a web server. You can still stop it."
+        >
+          System service — no web preview.
         </p>
       ) : null}
 

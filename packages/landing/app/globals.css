@@ -1,14 +1,20 @@
 @import "tailwindcss";
 
-/* Telemetry console design tokens */
+/* ============================================================
+   Founder — telemetry console design tokens
+   ============================================================ */
 :root {
-  --void: #0d1014;
-  --panel: #151b23;
+  --void: #0b0e12;
+  --void-2: #0d1014;
+  --panel: #141a22;
+  --panel-2: #171e27;
   --line: #232c37;
-  --text: #e6eaf0;
+  --line-soft: #1b222b;
+  --text: #e8ecf2;
   --muted: #8a95a3;
   --faint: #5b6573;
   --signal: #f2a23c;
+  --signal-bright: #ffb84d;
   --cool: #56b6c2;
   --ok: #74c69d;
   --alert: #e5645a;
@@ -16,12 +22,16 @@
 
 @theme inline {
   --color-void: var(--void);
+  --color-void-2: var(--void-2);
   --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
   --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-faint: var(--faint);
   --color-signal: var(--signal);
+  --color-signal-bright: var(--signal-bright);
   --color-cool: var(--cool);
   --color-ok: var(--ok);
   --color-alert: var(--alert);
@@ -36,6 +46,7 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -43,41 +54,181 @@ body {
   color: var(--text);
   font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
-/* Subtle scanline / grid backdrop for the console feel */
+/* Subtle film-grain / vignette over the whole page for depth */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse 70% 50% at 50% -10%,
+      color-mix(in srgb, var(--signal) 6%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 100% 60% at 50% 120%,
+      color-mix(in srgb, var(--cool) 4%, transparent),
+      transparent 60%
+    );
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================================
+   Hero backdrop: animated grid + drifting glow
+   ============================================================ */
 .console-grid {
   background-image:
     linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 64px 64px;
-  background-position: center;
+  background-size: 56px 56px;
+  background-position: center top;
   -webkit-mask-image: radial-gradient(
-    ellipse 80% 60% at 50% 0%,
+    ellipse 85% 65% at 50% 0%,
     black 0%,
-    transparent 75%
+    transparent 78%
   );
   mask-image: radial-gradient(
-    ellipse 80% 60% at 50% 0%,
+    ellipse 85% 65% at 50% 0%,
     black 0%,
-    transparent 75%
+    transparent 78%
   );
-  opacity: 0.5;
+  opacity: 0.45;
+  animation: grid-drift 32s linear infinite;
 }
 
-/* Amber glow for live numbers */
+@keyframes grid-drift {
+  0% {
+    background-position: center top;
+  }
+  100% {
+    background-position: center 56px;
+  }
+}
+
+/* Fine grid overlay for extra texture */
+.console-grid-fine {
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--line) 55%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--line) 55%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 14px 14px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 60% 50% at 50% 8%,
+    black 0%,
+    transparent 70%
+  );
+  mask-image: radial-gradient(
+    ellipse 60% 50% at 50% 8%,
+    black 0%,
+    transparent 70%
+  );
+  opacity: 0.35;
+}
+
+/* Soft amber aura behind the hero title */
+.hero-glow {
+  background: radial-gradient(
+    ellipse 50% 60% at 50% 38%,
+    color-mix(in srgb, var(--signal) 14%, transparent),
+    transparent 70%
+  );
+  filter: blur(8px);
+}
+
+/* ============================================================
+   Sweeping signal line — the live "scan" across the hero
+   ============================================================ */
+.signal-sweep {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.signal-sweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 22%;
+  left: -22%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--signal) 10%, transparent),
+    transparent
+  );
+  animation: signal-scan 7s ease-in-out infinite;
+}
+
+@keyframes signal-scan {
+  0% {
+    left: -22%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Thin top edge sweep */
+.sweep {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--signal) 85%, transparent),
+    transparent
+  );
+  animation: sweep-move 6s linear infinite;
+}
+
+@keyframes sweep-move {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+/* ============================================================
+   Amber glow for live numbers
+   ============================================================ */
 .signal-glow {
   text-shadow:
-    0 0 18px rgba(242, 162, 60, 0.45),
-    0 0 42px rgba(242, 162, 60, 0.18);
+    0 0 22px rgba(242, 162, 60, 0.5),
+    0 0 56px rgba(242, 162, 60, 0.22);
 }
 
 .signal-glow-soft {
-  text-shadow: 0 0 14px rgba(242, 162, 60, 0.3);
+  text-shadow: 0 0 14px rgba(242, 162, 60, 0.32);
 }
 
-/* Breathing pulse dot for live state */
+/* Soft amber box glow for the CTA / hero counter panel */
+.box-glow-signal {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--signal) 28%, transparent),
+    0 18px 60px -22px color-mix(in srgb, var(--signal) 40%, transparent);
+}
+
+/* ============================================================
+   Live pulse dot
+   ============================================================ */
 .pulse-dot {
   position: relative;
 }
@@ -97,48 +248,129 @@ body {
   }
   70%,
   100% {
-    transform: scale(2.6);
+    transform: scale(2.8);
     opacity: 0;
   }
 }
 
-/* Header sweep line */
-.sweep {
+/* ============================================================
+   Entrance + micro-interaction helpers
+   ============================================================ */
+.rise {
+  opacity: 0;
+  transform: translateY(14px);
+  animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes rise-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animated caret for the install command */
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--signal);
+  animation: blink 1.1s step-end infinite;
+}
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Surface card lift on hover */
+.card-hover {
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    background-color 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* Shimmer used on the leader row share bar */
+.bar-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.bar-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(242, 162, 60, 0.7),
+    rgba(255, 255, 255, 0.28),
     transparent
   );
-  animation: sweep-move 6s linear infinite;
+  transform: translateX(-100%);
+  animation: bar-shine 3.2s ease-in-out infinite;
 }
-
-@keyframes sweep-move {
+@keyframes bar-shine {
   0% {
     transform: translateX(-100%);
   }
+  60%,
   100% {
-    transform: translateX(100%);
+    transform: translateX(200%);
   }
 }
 
+/* ============================================================
+   Reduced motion: kill all decorative animation
+   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
   .pulse-dot::after,
-  .sweep {
+  .sweep,
+  .signal-sweep::after,
+  .console-grid,
+  .caret::after,
+  .bar-shimmer::after {
     animation: none;
   }
   .sweep {
     opacity: 0.4;
   }
+  .signal-sweep::after {
+    display: none;
+  }
+  .rise {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+  .card-hover:hover {
+    transform: none;
+  }
 }
 
-/* Focus visibility for keyboard nav */
+/* ============================================================
+   Keyboard focus visibility
+   ============================================================ */
 a:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--cool);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--signal) 35%, transparent);
+  color: var(--text);
 }

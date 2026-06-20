@@ -127,32 +127,50 @@ function Dashboard({ surface, onSurfaceChange }: DashboardProps) {
 
       {accessOpen ? <AccessPanel onClose={() => setAccessOpen(false)} /> : null}
 
-      {/* Mobile segmented switch (< lg). */}
+      {/* Mobile segmented switch (< lg) — a single inset control so the active
+          surface reads as a clearly raised segment. */}
       <nav
         className="flex gap-1 border-b p-2 hairline lg:hidden"
         aria-label="Dashboard sections"
         role="tablist"
       >
-        {SURFACES.map((s) => {
-          const selected = surface === s.id;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => onSurfaceChange(s.id)}
-              className="mono flex-1 rounded-md px-3 py-2 text-xs tracking-wide transition-colors"
-              style={{
-                color: selected ? "var(--color-text)" : "var(--color-muted)",
-                backgroundColor: selected ? "var(--color-panel)" : "transparent",
-                border: `1px solid ${selected ? "var(--color-line)" : "transparent"}`,
-              }}
-            >
-              {s.label}
-            </button>
-          );
-        })}
+        <div
+          className="flex flex-1 gap-1 rounded-lg p-1"
+          style={{ backgroundColor: "var(--color-void)", border: "1px solid var(--color-line)" }}
+        >
+          {SURFACES.map((s) => {
+            const selected = surface === s.id;
+            const showCount = s.id === "agents" && activeCount > 0;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => onSurfaceChange(s.id)}
+                className="mono flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs tracking-wide transition-colors"
+                style={{
+                  color: selected ? "var(--color-text)" : "var(--color-muted)",
+                  backgroundColor: selected ? "var(--color-panel)" : "transparent",
+                  border: `1px solid ${selected ? "var(--color-line)" : "transparent"}`,
+                }}
+              >
+                {s.label}
+                {showCount ? (
+                  <span
+                    className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[0.625rem] tabular-nums"
+                    style={{
+                      color: "var(--color-signal)",
+                      backgroundColor: "color-mix(in srgb, var(--color-signal) 15%, transparent)",
+                    }}
+                  >
+                    {activeCount}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Mobile: one surface at a time.
@@ -176,21 +194,28 @@ function Dashboard({ surface, onSurfaceChange }: DashboardProps) {
       {/* Desktop: two full-height columns. */}
       <div className="hidden min-h-0 flex-1 lg:grid lg:grid-cols-2 lg:gap-3 lg:p-3">
         <div className="flex min-h-0 flex-col gap-3">
-          <section
-            className="min-h-0 flex-1 overflow-y-auto"
-            aria-label="Agents"
-          >
-            {agents}
+          <section className="flex min-h-0 flex-1 flex-col gap-2" aria-label="Agents">
+            <div className="flex shrink-0 items-center gap-2 px-1">
+              <h2 className="section-label">Agents</h2>
+              {activeCount > 0 ? (
+                <span
+                  className="mono text-[0.625rem] tabular-nums"
+                  style={{ color: "var(--color-signal)" }}
+                >
+                  {activeCount} active
+                </span>
+              ) : null}
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">{agents}</div>
           </section>
-          <section
-            className="panel min-h-[10rem] flex-1 overflow-y-auto p-2"
-            aria-label="Servers"
-          >
-            {serversPanel}
+          <section className="flex min-h-[10rem] flex-1 flex-col gap-2" aria-label="Servers">
+            <h2 className="section-label shrink-0 px-1">Servers</h2>
+            <div className="panel min-h-0 flex-1 overflow-y-auto p-2">{serversPanel}</div>
           </section>
         </div>
-        <section className="panel min-h-0 overflow-hidden" aria-label="Terminal">
-          {terminal}
+        <section className="flex min-h-0 flex-col gap-2" aria-label="Terminal">
+          <h2 className="section-label shrink-0 px-1">Terminal</h2>
+          <div className="panel min-h-0 flex-1 overflow-hidden">{terminal}</div>
         </section>
       </div>
     </div>

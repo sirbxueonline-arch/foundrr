@@ -50,11 +50,16 @@ function activityColor(kind: CurrentActivity["kind"]): string {
 
 export function AgentCard({ session, now, cost }: AgentCardProps) {
   const isLive = session.status === "active" || session.status === "waiting";
+  const isEnded = session.status === "ended";
   const achievements = session.achievements.slice(0, MAX_ACHIEVEMENTS);
   const [reviewing, setReviewing] = useState(false);
 
   return (
-    <article className="panel flex flex-col gap-3 p-3 sm:p-4">
+    // Ended sessions sit quietly dimmed so the live ones own the column.
+    <article
+      className="panel flex flex-col gap-3 p-3 transition-opacity sm:p-4"
+      style={{ opacity: isEnded ? 0.62 : 1 }}
+    >
       <header className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Pulse active={isLive} label={`${session.project} ${session.status}`} />

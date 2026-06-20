@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * `mc` CLI entry point. Dispatches: start | hooks | doctor.
+ * `mc` CLI entry point. Dispatches: setup | start | hooks | doctor | ...
  */
 import { runConfig } from "./config.js";
 import { runDoctor } from "./doctor.js";
 import { runHooks } from "./hooks.js";
 import { runRotateToken } from "./rotate-token.js";
+import { runSetup } from "./setup.js";
 import { runStart } from "./start.js";
 import { runTelegramCli } from "./telegram.js";
 import { runTelemetry } from "./telemetry.js";
@@ -15,6 +16,7 @@ import { err } from "./util.js";
 const USAGE = `mc — Mission Control daemon + CLI
 
 Usage:
+  mc setup              Guided first-run: token + hooks + URL + next steps (safe to re-run)
   mc start              Start the daemon and print the dashboard URL
   mc hooks print        Print a paste-ready hooks block for ~/.claude/settings.json
   mc hooks install      Install the hooks into ~/.claude/settings.json (with backup)
@@ -52,6 +54,9 @@ async function main(): Promise<void> {
   }
 
   switch (cmd) {
+    case "setup":
+      runSetup();
+      return;
     case "start":
       await runStart();
       return;

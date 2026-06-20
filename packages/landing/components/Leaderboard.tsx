@@ -2,12 +2,7 @@
 
 import { useLiveData, type LiveData } from "@/lib/useLiveData";
 import { MODELS, resolveModel } from "@/lib/models";
-import {
-  formatCompact,
-  formatInt,
-  formatUsd,
-  relativeTime,
-} from "@/lib/format";
+import { formatCompact, formatInt, formatUsd, relativeTime } from "@/lib/format";
 import type { LeaderboardRow } from "@/lib/supabase";
 
 const EMPTY_ROW: Omit<LeaderboardRow, "agent"> = {
@@ -27,9 +22,7 @@ function buildRows(live: LeaderboardRow[]): LeaderboardRow[] {
   const canonical: LeaderboardRow[] = MODELS.map(
     (m) => byAgent.get(m.key) ?? { agent: m.key, ...EMPTY_ROW },
   );
-  const extras = live.filter(
-    (r) => !MODELS.some((m) => m.key === r.agent),
-  );
+  const extras = live.filter((r) => !MODELS.some((m) => m.key === r.agent));
   return [...canonical, ...extras].sort(
     (a, b) => b.total_tokens - a.total_tokens,
   );
@@ -38,20 +31,33 @@ function buildRows(live: LeaderboardRow[]): LeaderboardRow[] {
 function CrownIcon() {
   return (
     <svg
-      width="16"
-      height="16"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden
-      className="text-signal"
+      className="text-signal signal-glow-soft drop-shadow"
     >
       <path
         d="M3 7l4.5 3L12 4l4.5 6L21 7l-1.6 11H4.6L3 7z"
         fill="currentColor"
-        opacity="0.9"
+        opacity="0.95"
       />
+      <circle cx="3" cy="6" r="1.4" fill="currentColor" />
+      <circle cx="12" cy="3" r="1.4" fill="currentColor" />
+      <circle cx="21" cy="6" r="1.4" fill="currentColor" />
     </svg>
   );
+}
+
+function rankBadgeClasses(rank: number): string {
+  if (rank === 1)
+    return "bg-[color-mix(in_srgb,var(--signal)_22%,transparent)] text-signal border-[color-mix(in_srgb,var(--signal)_45%,var(--line))]";
+  if (rank === 2)
+    return "bg-[color-mix(in_srgb,var(--text)_10%,transparent)] text-text border-line";
+  if (rank === 3)
+    return "bg-[color-mix(in_srgb,var(--cool)_14%,transparent)] text-cool border-line";
+  return "bg-transparent text-faint border-line";
 }
 
 function Row({
@@ -70,31 +76,40 @@ function Row({
 
   return (
     <li
-      className={`group relative rounded-lg border px-4 py-3.5 sm:px-5 transition-colors ${
+      className={`card-hover group relative overflow-hidden rounded-xl border px-4 py-3.5 sm:px-5 ${
         isLeader
-          ? "border-[color-mix(in_srgb,var(--signal)_45%,var(--line))] bg-[color-mix(in_srgb,var(--signal)_7%,var(--panel))]"
+          ? "border-[color-mix(in_srgb,var(--signal)_45%,var(--line))] bg-[color-mix(in_srgb,var(--signal)_8%,var(--panel))] box-glow-signal"
           : "border-line bg-panel hover:border-[var(--faint)]"
       }`}
     >
       <div className="flex items-center gap-3 sm:gap-4">
-        <span className="font-mono text-sm text-faint w-6 shrink-0 tabular-nums text-right">
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border font-mono text-xs font-semibold tabular-nums ${rankBadgeClasses(
+            rank,
+          )}`}
+        >
           {rank}
         </span>
         <span
-          className="h-7 w-1 rounded-full shrink-0"
-          style={{ backgroundColor: model.color }}
+          className="h-8 w-1.5 shrink-0 rounded-full"
+          style={{
+            backgroundColor: model.color,
+            boxShadow: isLeader
+              ? `0 0 12px color-mix(in srgb, ${model.color} 60%, transparent)`
+              : "none",
+          }}
           aria-hidden
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-text truncate">{model.name}</span>
+            <span className="truncate font-medium text-text">{model.name}</span>
             {isLeader && <CrownIcon />}
           </div>
           <span className="text-xs text-faint">{model.vendor}</span>
         </div>
 
-        <div className="hidden sm:flex flex-col items-end w-24 shrink-0">
-          <span className="font-mono text-xs text-faint uppercase tracking-wider">
+        <div className="hidden w-24 shrink-0 flex-col items-end sm:flex">
+          <span className="font-mono text-[0.65rem] uppercase tracking-wider text-faint">
             installs
           </span>
           <span className="font-mono text-sm text-muted tabular-nums">
@@ -102,8 +117,8 @@ function Row({
           </span>
         </div>
 
-        <div className="flex flex-col items-end w-20 sm:w-24 shrink-0">
-          <span className="font-mono text-xs text-faint uppercase tracking-wider">
+        <div className="flex w-20 shrink-0 flex-col items-end sm:w-24">
+          <span className="font-mono text-[0.65rem] uppercase tracking-wider text-faint">
             cost
           </span>
           <span className="font-mono text-sm text-muted tabular-nums">
@@ -111,8 +126,8 @@ function Row({
           </span>
         </div>
 
-        <div className="flex flex-col items-end w-24 sm:w-28 shrink-0">
-          <span className="font-mono text-xs text-faint uppercase tracking-wider">
+        <div className="flex w-24 shrink-0 flex-col items-end sm:w-28">
+          <span className="font-mono text-[0.65rem] uppercase tracking-wider text-faint">
             tokens
           </span>
           <span
@@ -126,13 +141,15 @@ function Row({
       </div>
 
       {/* Share bar */}
-      <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--line)_70%,transparent)]">
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--line)_70%,transparent)]">
         <div
-          className="h-full rounded-full transition-[width] duration-700 ease-out"
+          className={`h-full rounded-full transition-[width] duration-700 ease-out ${
+            isLeader ? "bar-shimmer" : ""
+          }`}
           style={{
-            width: `${share}%`,
+            width: `${Math.max(share, hasData ? 4 : 0)}%`,
             backgroundColor: model.color,
-            opacity: isLeader ? 1 : 0.6,
+            opacity: isLeader ? 1 : 0.55,
           }}
         />
       </div>
@@ -146,19 +163,41 @@ export function Leaderboard({ initial }: { initial: LiveData }) {
   const maxTokens = rows[0]?.total_tokens ?? 0;
   const hasAny = rows.some((r) => r.total_tokens > 0);
 
+  const lastSeen =
+    leaderboard.length > 0
+      ? relativeTime(
+          leaderboard
+            .map((r) => r.last_seen)
+            .filter(Boolean)
+            .sort()
+            .at(-1) ?? null,
+        )
+      : "—";
+
   return (
     <section id="leaderboard" className="mx-auto max-w-4xl px-5 py-20 sm:py-28">
-      <header className="mb-8">
-        <p className="font-mono text-xs uppercase tracking-[0.22em] text-cool mb-2">
-          // model leaderboard
-        </p>
-        <h2 className="font-display text-3xl sm:text-4xl font-semibold">
-          Who is burning the tokens
-        </h2>
-        <p className="mt-2 text-muted max-w-2xl">
-          Ranked by total tokens metered across every install. The crown goes to
-          the busiest agent in the fleet.
-        </p>
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="font-mono text-[0.7rem] uppercase tracking-[0.24em] text-cool">
+            // model leaderboard
+          </p>
+          <h2 className="mt-2 font-display text-3xl sm:text-4xl font-semibold tracking-tight">
+            Who is burning the tokens
+          </h2>
+          <p className="mt-3 max-w-2xl text-muted leading-relaxed">
+            Ranked by total tokens metered across every install. The crown goes
+            to the busiest agent in the fleet.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5">
+          <span className="relative inline-flex h-1.5 w-1.5">
+            <span className="pulse-dot absolute inset-0" aria-hidden />
+            <span className="relative inline-block h-1.5 w-1.5 rounded-full bg-signal" />
+          </span>
+          <span className="font-mono text-[0.7rem] text-muted">
+            updated {lastSeen}
+          </span>
+        </div>
       </header>
 
       <ol className="flex flex-col gap-2.5" aria-live="polite">
@@ -173,19 +212,6 @@ export function Leaderboard({ initial }: { initial: LiveData }) {
           online.
         </p>
       )}
-
-      <p className="mt-4 text-center font-mono text-xs text-faint">
-        last update:{" "}
-        {leaderboard.length > 0
-          ? relativeTime(
-              leaderboard
-                .map((r) => r.last_seen)
-                .filter(Boolean)
-                .sort()
-                .at(-1) ?? null,
-            )
-          : "—"}
-      </p>
     </section>
   );
 }
