@@ -397,6 +397,28 @@ export interface TelegramStatus {
   hasToken: boolean;
 }
 
+/** Result of `POST /api/telegram/link` — a single-use code to send the bot. */
+export interface TelegramLinkResult {
+  ok: boolean;
+  /** "shared" → message @botUsername; "own" → message your own bot. */
+  mode?: "shared" | "own";
+  /** Which bot to message (shared mode only). */
+  botUsername?: string;
+  /** The single-use `/link <code>` code (shared mode only). */
+  linkCode?: string;
+  /** Human-readable error when ok=false. */
+  error?: string;
+}
+
+/**
+ * Turn the Telegram leash ON (shared mode, if it was off) and fetch a one-time
+ * link code — the dashboard-side equivalent of `mc telegram link`. Throws an
+ * {@link ApiError} on a non-2xx so the caller can surface the message.
+ */
+export function linkTelegram(): Promise<TelegramLinkResult> {
+  return apiPost<TelegramLinkResult>("/api/telegram/link", {});
+}
+
 /**
  * Fetch the Telegram link status. Defensive by design: this endpoint may not
  * exist yet (404) and the daemon may add it later, so any failure — a missing

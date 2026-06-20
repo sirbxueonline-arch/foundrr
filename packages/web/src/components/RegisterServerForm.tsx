@@ -102,7 +102,7 @@ export function RegisterServerForm({ onRegistered }: RegisterServerFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="panel flex flex-col gap-3 p-3">
+    <form onSubmit={handleSubmit} className="panel flex w-full flex-col gap-3 p-3">
       <TextField
         id="reg-name"
         label="name"

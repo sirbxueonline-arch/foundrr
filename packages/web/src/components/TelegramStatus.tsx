@@ -47,40 +47,44 @@ export function TelegramStatus() {
   if (linked) {
     return (
       <span
-        className="mono inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.625rem] tracking-wider"
+        className="mono inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.625rem] tracking-wider"
         style={{
           color: "var(--color-ok)",
-          borderColor: "var(--color-ok)",
+          borderColor: "color-mix(in srgb, var(--color-ok) 45%, transparent)",
           borderWidth: 1,
-          backgroundColor: "color-mix(in srgb, var(--color-ok) 12%, transparent)",
         }}
-        title="A Telegram chat is linked to this daemon"
+        title="A Telegram chat is linked to this daemon — approve prompts from your phone"
       >
-        <span aria-hidden="true">📱</span>
-        <span>linked</span>
+        <span
+          aria-hidden="true"
+          className="inline-block h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: "var(--color-ok)" }}
+        />
+        <span>Telegram</span>
       </span>
     );
   }
 
   if (hasToken) {
+    // Bot configured but no phone bound yet — a terse, calm "not linked" chip;
+    // the full /link instructions live in the Connect panel, not the header.
     return (
       <span
-        className="mono text-[0.625rem] tracking-wide"
-        style={{ color: "var(--color-muted)" }}
+        className="mono inline-flex items-center gap-1.5 text-[0.625rem] tracking-wider"
+        style={{ color: "var(--color-faint)" }}
+        title="Telegram bot configured, but no phone is linked yet. Open Connect to link one."
       >
-        Telegram: not linked — message your bot{" "}
-        <code style={{ color: "var(--color-cool)" }}>/link &lt;token&gt;</code>
+        <span
+          aria-hidden="true"
+          className="inline-block h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: "var(--color-faint)" }}
+        />
+        <span>Telegram · not linked</span>
       </span>
     );
   }
 
-  // No bot token configured.
-  return (
-    <span
-      className="mono text-[0.625rem] tracking-wide"
-      style={{ color: "var(--color-faint)" }}
-    >
-      Telegram: run <code style={{ color: "var(--color-muted)" }}>mc telegram setup</code>
-    </span>
-  );
+  // No bot token configured — keep the header clean rather than advertising a
+  // CLI command here; setup is surfaced in the Connect panel.
+  return null;
 }

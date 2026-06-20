@@ -117,6 +117,10 @@ export interface CostSnapshot {
   todayUsd: number;
   /** Total tokens today. */
   todayTokens: number;
+  /** All-time USD, persisted to SQLite (survives daemon restarts). */
+  lifetimeUsd: number;
+  /** All-time tokens, persisted to SQLite (survives daemon restarts). */
+  lifetimeTokens: number;
   /** Per-session breakdown, keyed by session.id. */
   sessions: Record<string, { usd: number; tokens: number }>;
   updatedAt: number;

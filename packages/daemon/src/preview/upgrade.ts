@@ -19,7 +19,7 @@ import { type IncomingMessage, type Server } from "node:http";
 import { type Socket } from "node:net";
 
 import type { Config } from "../config.js";
-import { isValidToken } from "../http/auth.js";
+import { isValidToken, tokenFromCookie } from "../http/auth.js";
 import { parsePreviewUrl } from "./path.js";
 import type { PreviewProxyService } from "./proxy-service.js";
 
@@ -54,7 +54,10 @@ function tokenFromRaw(req: IncomingMessage): string | undefined {
     }
   }
 
-  return undefined;
+  // Cookie fallback — the preview page's HMR socket carries the mc_token cookie
+  // (set on the first authenticated navigation) but no `?token=` query.
+  const cookie = req.headers["cookie"];
+  return typeof cookie === "string" ? tokenFromCookie(cookie) : undefined;
 }
 
 function destroyQuietly(socket: Socket): void {

@@ -25,6 +25,7 @@ import { type IncomingMessage, type ServerResponse } from "node:http";
 
 import httpProxy from "http-proxy-3";
 
+import { TOKEN_COOKIE } from "../http/auth.js";
 import { previewPrefix, rewriteHtml } from "./html-rewrite.js";
 
 /** A public summary of one exposed preview target. */
@@ -82,6 +83,43 @@ function describe(err: unknown): string {
 
 function log(message: string): void {
   process.stderr.write(`[preview/proxy] ${message}\n`);
+}
+
+/** Max HTML we buffer before rewriting, to bound memory on a runaway upstream. */
+const MAX_HTML_BYTES = 32 * 1024 * 1024; // 32 MiB
+
+/** Hop-by-hop headers that must not be relayed onto the daemon's own connection. */
+const HOP_BY_HOP = [
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+];
+
+/**
+ * Strip the dashboard's OWN access credentials before forwarding a request to
+ * the previewed dev server. The browser auto-attaches the `mc_token` cookie
+ * (Path=/) to every same-origin preview request; without this, a previewed dev
+ * server — which may run untrusted code, log headers, or forward them — would
+ * receive the master token that grants full dashboard control. We remove only
+ * `mc_token` from the Cookie header (preserving the app's own cookies) and drop
+ * the dashboard-specific `x-mc-token` header. The dev server never needs either.
+ */
+function stripDashboardCredentials(headers: IncomingMessage["headers"]): void {
+  delete headers["x-mc-token"];
+  const cookie = headers["cookie"];
+  if (typeof cookie === "string") {
+    const kept = cookie
+      .split(";")
+      .map((c) => c.trim())
+      .filter((c) => c.length > 0 && !c.toLowerCase().startsWith(`${TOKEN_COOKIE}=`));
+    if (kept.length > 0) headers["cookie"] = kept.join("; ");
+    else delete headers["cookie"];
+  }
 }
 
 /** Destroy a socket/stream, swallowing any error (it may already be gone). */
@@ -187,6 +225,8 @@ export class PreviewProxyService {
     }
     // Forward the upstream-relative path (prefix already stripped by the caller).
     req.url = rest;
+    // Never hand the dashboard token to the previewed dev server.
+    stripDashboardCredentials(req.headers);
     record.proxy.web(req, res, { ignorePath: false }, (err: Error) => {
       writeBadGateway(res, targetPort, err);
     });
@@ -209,6 +249,8 @@ export class PreviewProxyService {
       return;
     }
     req.url = rest;
+    // Never hand the dashboard token to the previewed dev server's WS upstream.
+    stripDashboardCredentials(req.headers);
     record.proxy.ws(req, socket, head, { ignorePath: false }, (err: Error) => {
       log(`upstream :${targetPort} ws error: ${describe(err)}`);
       destroyQuietly(socket);
@@ -251,7 +293,10 @@ function pipeOrRewrite(
     const isHtml = (headers["content-type"] ?? "").toString().toLowerCase().includes("text/html");
 
     if (!isHtml) {
-      // Non-HTML: stream straight through with the upstream headers/status.
+      // Non-HTML: stream straight through, but drop hop-by-hop headers first so
+      // an upstream `transfer-encoding`/`connection` can't corrupt the daemon's
+      // own connection framing — Node re-frames the piped stream itself.
+      for (const h of HOP_BY_HOP) delete headers[h];
       res.writeHead(status, headers);
       proxyRes.pipe(res);
       return;
@@ -265,8 +310,23 @@ function pipeOrRewrite(
     delete headers["content-length"];
     delete headers["transfer-encoding"];
     const chunks: Buffer[] = [];
-    proxyRes.on("data", (chunk: Buffer) => chunks.push(chunk));
+    let total = 0;
+    let aborted = false;
+    proxyRes.on("data", (chunk: Buffer) => {
+      if (aborted) return;
+      total += chunk.length;
+      if (total > MAX_HTML_BYTES) {
+        // Runaway/streaming HTML — stop buffering rather than risk OOM.
+        aborted = true;
+        log(`html for :${targetPort} exceeded ${MAX_HTML_BYTES} bytes — aborting`);
+        destroyQuietly(proxyRes);
+        destroyQuietly(res);
+        return;
+      }
+      chunks.push(chunk);
+    });
     proxyRes.on("end", () => {
+      if (aborted) return;
       try {
         const body = Buffer.concat(chunks).toString("utf8");
         const rewritten = rewriteHtml(body, targetPort);

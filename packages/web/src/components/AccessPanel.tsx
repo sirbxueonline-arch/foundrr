@@ -19,10 +19,14 @@ import { QRCodeSVG } from "qrcode.react";
 import {
   ApiError,
   getAccess,
+  getTelegramStatus,
+  linkTelegram,
   startTunnel,
   stopTunnel,
   type AccessAddress,
   type AccessInfo,
+  type TelegramLinkResult,
+  type TelegramStatus,
 } from "../lib/api";
 
 interface AccessPanelProps {
@@ -238,12 +242,165 @@ export function AccessPanel({ onClose }: AccessPanelProps) {
                 onStop={() => void handleStopTunnel()}
               />
 
+              <TelegramSection />
+
               <TailscaleTip />
             </div>
           ) : null}
         </div>
       </section>
     </div>
+  );
+}
+
+// ─── Telegram leash — one-tap link ────────────────────────────────────────────
+
+const TELEGRAM_POLL_MS = 3000;
+
+/**
+ * One-tap Telegram linking, right in the dashboard. "Link Telegram" turns the
+ * leash on (shared mode) and fetches a single-use code; the user opens the bot
+ * (deep link) and sends the copied `/link <code>`. We poll status so the panel
+ * flips to "linked" automatically the moment the bind lands — no CLI, no refresh.
+ */
+function TelegramSection() {
+  const [status, setStatus] = useState<TelegramStatus | null>(null);
+  const [link, setLink] = useState<TelegramLinkResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async (): Promise<void> => {
+      const s = await getTelegramStatus();
+      if (!cancelled) setStatus(s);
+    };
+    void tick();
+    const timer = setInterval(() => void tick(), TELEGRAM_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
+  const linked = status?.linked === true;
+  const command = link?.linkCode ? `/link ${link.linkCode}` : "";
+
+  const onLink = async (): Promise<void> => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await linkTelegram();
+      if (!result.ok) setError(result.error ?? "Could not start linking. Try again.");
+      else setLink(result);
+    } catch (e) {
+      setError(e instanceof ApiError ? `Link failed (${e.status})` : "Link failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyCommand = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard unavailable — the code is still visible to type by hand.
+    }
+  };
+
+  return (
+    <section aria-label="Telegram approvals">
+      <SectionTitle>Telegram approvals</SectionTitle>
+      <p className="mono mt-2 text-xs leading-relaxed" style={{ color: "var(--color-faint)" }}>
+        Approve Claude&apos;s permission prompts from your phone — one tap, from anywhere.
+      </p>
+
+      {linked ? (
+        <div
+          className="mono mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
+          style={{
+            color: "var(--color-ok)",
+            border: "1px solid color-mix(in srgb, var(--color-ok) 45%, transparent)",
+          }}
+        >
+          <span
+            aria-hidden="true"
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: "var(--color-ok)" }}
+          />
+          <span>Telegram linked — approvals reach your phone</span>
+        </div>
+      ) : link?.mode === "shared" && link.linkCode ? (
+        <div className="mt-3 flex flex-col gap-3">
+          <p className="text-sm font-light leading-relaxed" style={{ color: "var(--color-text)" }}>
+            Open{" "}
+            <span className="mono font-medium" style={{ color: "var(--color-cool)" }}>
+              @{link.botUsername}
+            </span>{" "}
+            and send this code:
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code
+              className="mono select-all rounded-md px-2.5 py-2 text-sm"
+              style={{
+                backgroundColor: "var(--color-inset)",
+                color: "var(--color-text)",
+                border: "1px solid var(--color-line)",
+              }}
+            >
+              {command}
+            </code>
+            <button type="button" onClick={() => void copyCommand()} className="pill pill-cool">
+              {copied ? "Copied ✓" : "Copy"}
+            </button>
+            <a
+              href={`https://t.me/${link.botUsername}`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="pill pill-primary"
+            >
+              Open Telegram
+            </a>
+          </div>
+          <p
+            className="mono text-[0.6875rem] leading-relaxed"
+            style={{ color: "var(--color-signal-ink)" }}
+          >
+            Waiting for you to send the code… this updates automatically.
+          </p>
+        </div>
+      ) : link?.mode === "own" ? (
+        <p className="mt-3 text-sm font-light leading-relaxed" style={{ color: "var(--color-text)" }}>
+          You&apos;re on your own bot — message it{" "}
+          <code className="mono" style={{ color: "var(--color-cool)" }}>
+            /link &lt;access token&gt;
+          </code>
+          ; your token is in this page&apos;s URL after <code className="mono">?token=</code>.
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={() => void onLink()}
+          disabled={busy}
+          className="pill pill-primary mt-3"
+        >
+          {busy ? "Linking…" : "Link Telegram"}
+        </button>
+      )}
+
+      {error ? (
+        <p
+          className="mono mt-2 text-xs leading-relaxed"
+          role="alert"
+          style={{ color: "var(--color-alert)" }}
+        >
+          {error}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

@@ -21,7 +21,7 @@ import type { DetectedServer, RegisteredServer } from "@mission-control/shared";
 import { Pulse } from "./Pulse";
 import { truncate } from "../lib/format";
 import { isWebServer } from "../lib/serverKind";
-import { previewUrl } from "../lib/preview";
+import { previewUrl, previewOpenUrl } from "../lib/preview";
 
 export type ServerAction =
   | "open"
@@ -57,7 +57,16 @@ const COMMAND_MAX_CHARS = 64;
  * Used for both the direct Open link and the Preview proxy link.
  */
 function openUrl(port: number): string {
-  return `${window.location.protocol}//${window.location.hostname}:${port}/`;
+  const host = window.location.hostname;
+  // For a loopback dashboard host, target "localhost" instead of the literal
+  // IP: the browser then tries BOTH IPv6 (::1) and IPv4 (127.0.0.1), so a dev
+  // server that binds ::1 only (Vite/Next default) is still reached — a literal
+  // "127.0.0.1" would miss it (ECONNREFUSED). Remote / Tailscale hosts (a real
+  // machine name) pass through unchanged so the link still targets the dev box.
+  const isLoopback =
+    host === "127.0.0.1" || host === "::1" || host === "[::1]" || host === "0.0.0.0";
+  const target = isLoopback ? "localhost" : host;
+  return `${window.location.protocol}//${target}:${port}/`;
 }
 
 /**
@@ -113,9 +122,9 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
 
   return (
     <article className="panel flex flex-col gap-2 p-3" aria-label={`Server ${ariaName}`}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         {/* Identity: pulse + port (prominent) + framework / registered name. */}
-        <div className="flex min-w-0 items-baseline gap-2">
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="self-center">
             <Pulse active={isLive} label={isLive ? "Listening" : "Not running"} />
           </span>
@@ -150,8 +159,10 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
           ) : null}
         </div>
 
-        {/* Controls. Fixed-size buttons; disabled (not hidden) while pending. */}
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        {/* Controls. On mobile they sit on their own row (parent stacks) and
+            wrap; on sm+ they align right beside the identity. Not shrink-0, so
+            the identity block keeps its width instead of being squeezed out. */}
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {showOpen ? (
             <a
               href={openUrl(port as number)}
@@ -181,7 +192,7 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
           {showOpen && isExposed ? (
             <>
               <a
-                href={previewUrl(port as number)}
+                href={previewOpenUrl(port as number)}
                 target="_blank"
                 rel="noreferrer noopener"
                 className="pill pill-primary"

@@ -26,24 +26,22 @@
      --color-panel  = a raised card surface (pure white)
      --color-line   = the 1px hairline                                        */
 @theme {
+  /* DEFAULT = light (Aqua's light expression). The dark Aqua expression is the
+     `:root[data-theme="dark"]` override below; a toggle flips between them. */
   --color-void: #f6f7f9; /* canvas + recessed insets */
   --color-panel: #ffffff; /* raised card surface */
-  --color-inset: #eef0f3; /* a touch deeper than canvas for inputs/insets on white */
+  --color-inset: #eef0f3; /* a touch deeper than canvas for inputs/insets */
   --color-line: #e6e8ec; /* hairline */
   --color-text: #1b2128; /* ink */
   --color-muted: #5a6675; /* secondary ink (AA on white + canvas) */
   --color-faint: #8a94a3; /* tertiary ink (AA-large / captions) */
 
-  /* Amber — the single live/primary accent. --signal is the bright fill used
-     for dots, the active-card edge, the header sweep, tint backgrounds. For
-     amber *text on white* use --signal-ink (≈4.6:1) so it clears AA. */
+  /* Amber — the single live/primary accent. --signal is the bright fill; amber
+     *text on white* uses the deeper --signal-ink (≈4.6:1) so it clears AA. */
   --color-signal: #f2a23c;
   --color-signal-ink: #a8620a;
 
-  /* Semantic status, retuned for AA on the light surface:
-       cool  = interactive / links / ports (deep teal, ~4.8:1 on white)
-       ok    = success (deep green, ~4.8:1 on white)
-       alert = destructive (deep red, ~5:1 on white)                          */
+  /* Semantic status, tuned for AA on the light surface. */
   --color-cool: #1f7d8a;
   --color-ok: #1f7d52;
   --color-alert: #c4362b;
@@ -62,8 +60,28 @@ body,
   height: 100%;
 }
 
+/* Dark Aqua expression — opt in via <html data-theme="dark">. Overrides the
+   light token values above; components read the same var names, so the whole
+   dashboard flips. `color-scheme` keeps native controls (select popup,
+   scrollbars) in step. The toggle persists the choice (see App.tsx). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-void: #0d1014; /* dashboard base — Aqua's dark side (the doc §1) */
+  --color-panel: #141a22; /* raised card surface */
+  --color-inset: #1b222b; /* subtle recessed/field surface inside a panel */
+  --color-line: #232c37; /* hairline on dark (--line-d) */
+  --color-text: #e6eaf0;
+  --color-muted: #8a95a3;
+  --color-faint: #5b6573;
+  --color-signal-ink: #f2a23c; /* amber text is already legible on dark */
+  --color-cool: #56b6c2;
+  --color-ok: #74c69d;
+  --color-alert: #e5645a;
+}
+
 body {
   margin: 0;
+  color-scheme: light;
   background-color: var(--color-void);
   color: var(--color-text);
   font-family: var(--font-sans);
@@ -200,6 +218,16 @@ body {
     box-shadow:
       inset 2px 0 0 -1px color-mix(in srgb, var(--color-signal) 60%, transparent),
       0 1px 2px -1px color-mix(in srgb, #1b2128 8%, transparent);
+  }
+}
+
+/* ── Touch targets ──────────────────────────────────────────────────────────
+   Below lg (the single-surface mobile/tablet view) every `.pill` — the shared
+   button vocabulary used across the header, server rows, terminal tabs, and
+   forms — gets a comfortable ≥40px hit area. Desktop keeps the compact pill. */
+@media (max-width: 1023px) {
+  .pill {
+    min-height: 2.5rem;
   }
 }
 

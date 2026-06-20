@@ -15,7 +15,7 @@ import { Pulse } from "./Pulse";
 import { StatusPill } from "./StatusPill";
 import { StatRow } from "./StatRow";
 import { GitPanel } from "./GitPanel";
-import { relativeTime, truncate, usd, compactTokens } from "../lib/format";
+import { relativeTime, truncate, usd, compactTokens, uptime, shortPath } from "../lib/format";
 
 interface SessionCost {
   usd: number;
@@ -62,70 +62,90 @@ export function AgentCard({ session, now, cost }: AgentCardProps) {
     // are fully neutral (amber appears only when the machine is working). Ended
     // sessions sit quietly dimmed so the live ones own the column.
     <article
-      className={`panel flex flex-col gap-3 p-3.5 transition-opacity sm:p-4${
+      className={`panel flex flex-col gap-3 p-4 transition-opacity${
         isLive ? " card-active" : ""
       }`}
-      style={{ opacity: isEnded ? 0.62 : 1 }}
+      style={{ opacity: isEnded ? 0.6 : 1 }}
     >
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Pulse active={isLive} label={`${session.project} ${session.status}`} />
-          <h3
-            className="mono truncate text-base font-medium"
-            title={session.cwd}
-            style={{ color: "var(--color-text)" }}
-          >
-            {session.project}
-          </h3>
+      {/* Identity anchor: the project name in humanist sans (the eye lands here),
+          its working dir in faint mono beneath it. Uptime + status sit opposite,
+          so "what / where" reads left and "how long / state" reads right. */}
+      <header className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span className="mt-1 shrink-0">
+            <Pulse active={isLive} label={`${session.project} ${session.status}`} />
+          </span>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h3
+              className="truncate text-[0.9375rem] font-medium leading-tight tracking-tight"
+              style={{ color: "var(--color-text)" }}
+            >
+              {session.project}
+            </h3>
+            <p
+              className="mono truncate text-[0.6875rem] leading-none"
+              title={session.cwd}
+              style={{ color: "var(--color-faint)" }}
+            >
+              {shortPath(session.cwd)}
+            </p>
+          </div>
         </div>
-        <StatusPill status={session.status} />
+        <div className="flex shrink-0 items-center gap-2.5">
+          <span
+            className="mono text-[0.625rem] tabular-nums"
+            title="Session uptime"
+            style={{ color: "var(--color-faint)" }}
+          >
+            {uptime(session.startedAt, now)}
+          </span>
+          <StatusPill status={session.status} />
+        </div>
       </header>
 
-      <p
-        className="mono min-h-[1.25rem] text-sm leading-tight"
-        style={{ color: activityColor(session.current.kind) }}
-        title={session.current.label}
-      >
-        {truncate(session.current.label, ACTIVITY_MAX_CHARS)}
-      </p>
-
-      <StatRow stats={session.stats} startedAt={session.startedAt} now={now} />
-
-      {cost ? (
+      {/* Live one-liner of what the agent is doing now, with this session's spend
+          anchored to the right of the same line so the card reads as one tidy
+          status row rather than two stacked facts. */}
+      <div className="flex items-baseline justify-between gap-3">
         <p
-          className="mono flex items-baseline gap-2 text-xs leading-none"
-          aria-label={`${usd(cost.usd)} this session, ${compactTokens(cost.tokens)} tokens`}
+          className="mono min-w-0 flex-1 truncate text-xs leading-tight"
+          style={{ color: activityColor(session.current.kind) }}
+          title={session.current.label}
         >
-          <span className="tabular-nums" style={{ color: "var(--color-signal-ink)" }}>
-            {usd(cost.usd)}
-          </span>
-          <span className="tabular-nums" style={{ color: "var(--color-muted)" }}>
-            {compactTokens(cost.tokens)} tok
-          </span>
-          <span className="caption">this session</span>
+          {truncate(session.current.label, ACTIVITY_MAX_CHARS)}
         </p>
-      ) : null}
+        {cost ? (
+          <span
+            className="mono flex shrink-0 items-baseline gap-1.5 text-[0.6875rem] leading-none tabular-nums"
+            aria-label={`${usd(cost.usd)} this session, ${compactTokens(cost.tokens)} tokens`}
+          >
+            <span style={{ color: "var(--color-signal-ink)" }}>{usd(cost.usd)}</span>
+            <span style={{ color: "var(--color-faint)" }}>{compactTokens(cost.tokens)} tok</span>
+          </span>
+        ) : null}
+      </div>
 
-      <section className="flex flex-col gap-1.5 border-t pt-3 hairline" aria-label="Recent activity">
+      <StatRow stats={session.stats} />
+
+      {/* Recent activity on a recessed inset — depth in place of yet another
+          hairline divider. A fixed faint timestamp column keeps the log aligned
+          and scannable without the noisy per-line bullet. */}
+      <section
+        className="flex flex-col gap-1.5 rounded-lg px-3 py-2.5"
+        style={{ backgroundColor: "var(--color-inset)" }}
+        aria-label="Recent activity"
+      >
         {achievements.length === 0 ? (
           <p className="caption">No activity yet</p>
         ) : (
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-1.5">
             {achievements.map((a) => (
               <li
                 key={`${a.ts}-${a.kind}-${a.text}`}
-                className="mono flex items-baseline gap-2 text-xs leading-tight"
+                className="mono flex items-baseline gap-2.5 text-[0.6875rem] leading-tight"
               >
-                {/* Small --ok marker — a quiet "done" tick before each line. */}
                 <span
-                  className="shrink-0 self-center"
-                  aria-hidden="true"
-                  style={{ color: "var(--color-ok)" }}
-                >
-                  ·
-                </span>
-                <span
-                  className="w-8 shrink-0 text-right tabular-nums"
+                  className="w-7 shrink-0 text-right tabular-nums"
                   style={{ color: "var(--color-faint)" }}
                 >
                   {relativeTime(a.ts, now)}
@@ -139,13 +159,13 @@ export function AgentCard({ session, now, cost }: AgentCardProps) {
         )}
       </section>
 
-      <footer className="flex justify-end border-t pt-3 hairline">
+      <footer className="flex justify-end">
         <button
           type="button"
           onClick={() => setReviewing(true)}
           className="pill pill-cool"
         >
-          REVIEW CHANGES
+          Review changes
         </button>
       </footer>
 

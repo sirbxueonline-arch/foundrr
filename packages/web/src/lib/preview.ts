@@ -13,6 +13,7 @@
  * This helper reads `window.location` defensively and never throws, so it is
  * safe to call inside render and inside click handlers alike.
  */
+import { getToken } from "./token";
 
 /**
  * The same-origin preview URL for a dev-server `port`: the page's own
@@ -26,4 +27,18 @@ export function previewUrl(port: number): string {
       ? window.location.origin
       : "";
   return `${origin}/__preview/${port}/`;
+}
+
+/**
+ * The URL to actually OPEN a preview in a new tab: the clean preview URL plus a
+ * one-time `?token=` so the very first navigation authenticates. The daemon
+ * immediately swaps that query token for a path-scoped cookie and redirects to
+ * the clean URL (so the previewed page's sub-resources stay authenticated and
+ * the token doesn't linger in the address bar). Falls back to the clean URL
+ * when no token is available. Use `previewUrl()` for DISPLAY (no token leak).
+ */
+export function previewOpenUrl(port: number): string {
+  const base = previewUrl(port);
+  const token = getToken();
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }

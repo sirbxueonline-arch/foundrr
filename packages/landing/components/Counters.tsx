@@ -4,6 +4,30 @@ import { useLiveData, type LiveData } from "@/lib/useLiveData";
 import { useCountUp } from "@/lib/useCountUp";
 import { formatInt, formatUsd } from "@/lib/format";
 
+// Compact display formats so the oversized numerals stay short and fit their
+// column at any scale — "137.8M", "1.3B" instead of "137,764,495" (which
+// overflows into the next stat). The exact value is still announced via aria.
+const COMPACT_INT = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+const COMPACT_USD = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+function compactInt(n: number): string {
+  return COMPACT_INT.format(Math.max(0, Math.round(n)));
+}
+
+function compactUsd(n: number): string {
+  const v = Math.max(0, n);
+  // Keep cents for everyday amounts; switch to compact ($1.2M) once it's large.
+  return v < 100_000 ? `$${v.toFixed(2)}` : COMPACT_USD.format(v);
+}
+
 /**
  * Big live telemetry numerals — light canvas, modeled on Aqua's "Results you
  * notice immediately" stat band. Each oversized JetBrains Mono number is ink on
@@ -62,14 +86,14 @@ export function Counters({ initial }: { initial: LiveData }) {
   return (
     <div className="grid gap-12 sm:grid-cols-2">
       <LiveStat
-        value={formatInt(animatedTokens)}
+        value={compactInt(animatedTokens)}
         caption="total tokens metered"
         note="across every install"
         ariaLabel={`${formatInt(totals.total_tokens)} tokens metered`}
         live={live}
       />
       <LiveStat
-        value={formatUsd(animatedCost)}
+        value={compactUsd(animatedCost)}
         caption="total spend tracked"
         note="anonymous, in real time"
         ariaLabel={`${formatUsd(totals.total_cost_usd)} total spend`}

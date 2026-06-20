@@ -49,6 +49,24 @@ export function truncate(s: string, n: number): string {
   return `${s.slice(0, n - 1)}…`;
 }
 
+/**
+ * Make a filesystem path compact and legible for a header line: collapse the
+ * home dir to `~`, and for deep paths keep only the most informative trailing
+ * segments behind a leading ellipsis (VS-Code-style). The tail is what tells you
+ * *which project* this is, so it's preserved over the root.
+ * e.g. "/Users/kaan/Desktop/dev dash" → "~/Desktop/dev dash"
+ *      "/Users/kaan/work/acme/apps/web/src" → "…/apps/web/src"
+ */
+export function shortPath(path: string, maxSegments = 3): string {
+  if (!path) return "";
+  const home = path.replace(/^\/(?:Users|home)\/[^/]+/, "~");
+  const segments = home.split("/").filter(Boolean);
+  if (segments.length <= maxSegments) {
+    return home.startsWith("~") ? home : `/${segments.join("/")}`;
+  }
+  return `…/${segments.slice(-maxSegments).join("/")}`;
+}
+
 const USD_SMALL_THRESHOLD = 1;
 const USD_SMALL_DECIMALS = 4;
 const USD_LARGE_DECIMALS = 2;

@@ -4,12 +4,10 @@
  * Token gate first: without a token, no data calls are made and a full-screen
  * "token required" notice is shown.
  *
- * Desktop (≥ lg): two full-height columns. Left = Agents (top) + Servers
- * (bottom). Right = Terminal, full height. Servers (M2) and Terminal (M3) are
- * honest placeholders until those milestones land. Agents is fully live.
- *
- * Mobile (< lg): a segmented switch (Agents | Servers | Terminal) showing one
- * surface at a time; defaults to Agents.
+ * Layout: a left SIDEBAR (desktop) / bottom tab bar (mobile) switches between
+ * full-width pages — Agents, Changes, Servers, Terminal, Stats. The sidebar also
+ * holds the model picker, Connect, cost meter, and connection status, so the top
+ * of each page is uncluttered (on mobile those controls live in a slim header).
  *
  * The page is calm/cool when idle and lights up amber when agents are active.
  */
@@ -19,21 +17,16 @@ import { getConfig, getAgents, type LaunchableAgent } from "./lib/api";
 import { useStream } from "./lib/useStream";
 import { useNow } from "./lib/useNow";
 import { Header } from "./components/Header";
+import { Sidebar, NAV, type Page } from "./components/Sidebar";
 import { AgentsPanel } from "./components/AgentsPanel";
 import { ServersPanel } from "./components/ServersPanel";
+import { ChangesPage } from "./components/ChangesPage";
+import { StatsPage } from "./components/StatsPage";
 import { TerminalTabs } from "./components/TerminalTabs";
 import { ApprovalBanner } from "./components/ApprovalBanner";
 import { TelegramStatus } from "./components/TelegramStatus";
 import { AccessPanel } from "./components/AccessPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-
-type Surface = "agents" | "servers" | "terminal";
-
-const SURFACES: { id: Surface; label: string }[] = [
-  { id: "agents", label: "Agents" },
-  { id: "servers", label: "Servers" },
-  { id: "terminal", label: "Terminal" },
-];
 
 function TokenRequired() {
   return (
@@ -65,7 +58,6 @@ function TokenRequired() {
 
 export function App() {
   // Top-level boundary: nothing below this can ever produce a blank page.
-  // Worst case the user sees a readable error + a Reload button.
   return (
     <ErrorBoundary label="Foundrr">
       <AppShell />
@@ -74,32 +66,85 @@ export function App() {
 }
 
 function AppShell() {
-  const [surface, setSurface] = useState<Surface>("agents");
-
   // Token gate — render the notice before any hook that would make data calls.
   if (!hasToken()) {
     return <TokenRequired />;
   }
-
-  return <Dashboard surface={surface} onSurfaceChange={setSurface} />;
+  return <Dashboard />;
 }
 
-interface DashboardProps {
-  surface: Surface;
-  onSurfaceChange: (s: Surface) => void;
+/** Mobile bottom tab bar — the same pages as the desktop rail. */
+function MobileNav({
+  page,
+  onNavigate,
+  activeCount,
+}: {
+  page: Page;
+  onNavigate: (p: Page) => void;
+  activeCount: number;
+}) {
+  return (
+    <nav
+      className="flex shrink-0 border-t hairline lg:hidden"
+      style={{ backgroundColor: "var(--color-void)" }}
+      aria-label="Pages"
+    >
+      {NAV.map((item) => {
+        const selected = page === item.id;
+        const showCount = item.id === "agents" && activeCount > 0;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            aria-current={selected ? "page" : undefined}
+            onClick={() => onNavigate(item.id)}
+            className="relative flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 py-1.5 text-[0.625rem] tracking-wide transition-colors"
+            style={{ color: selected ? "var(--color-signal-ink)" : "var(--color-muted)" }}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              {item.icon}
+            </svg>
+            <span>{item.label}</span>
+            {showCount ? (
+              <span
+                className="absolute right-1/2 top-1 mr-2 inline-flex min-w-[1rem] items-center justify-center rounded-full px-1 text-[0.5625rem] tabular-nums"
+                style={{
+                  color: "var(--color-signal-ink)",
+                  backgroundColor: "color-mix(in srgb, var(--color-signal) 20%, transparent)",
+                }}
+              >
+                {activeCount}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </nav>
+  );
 }
 
-function Dashboard({ surface, onSurfaceChange }: DashboardProps) {
+function Dashboard() {
   const { sessions, servers, approvals, cost, status, serverTime } = useStream();
   const now = useNow(serverTime);
 
-  // The selected model key, lifted here so the Header picker and the Terminal's
-  // launch button stay in lockstep without either touching the terminal refs.
-  // null = not loaded yet. Seeded from /api/config, then owned locally so a pick
-  // updates both surfaces immediately (the picker still persists to the daemon).
+  const [page, setPage] = useState<Page>("agents");
+  // The selected model key, lifted so the picker and the terminal launch stay in
+  // lockstep. null = not loaded yet; seeded from /api/config, then owned locally.
   const [model, setModel] = useState<string | null>(null);
-  // Launchable agents + install state for the picker hints. null = unknown.
   const [agentsState, setAgentsState] = useState<LaunchableAgent[] | null>(null);
+  const [accessOpen, setAccessOpen] = useState(false);
+  // Bumped to remount the terminal subtree when its boundary resets.
+  const [terminalKey, setTerminalKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,148 +171,84 @@ function Dashboard({ surface, onSurfaceChange }: DashboardProps) {
     setModel(next);
   }, []);
 
-  // The "Access from anywhere" drawer — opened from the Header's Connect button.
-  const [accessOpen, setAccessOpen] = useState(false);
-  // Bumped to remount the terminal subtree when its boundary is reset, giving
-  // the user a clean retry without reloading the whole dashboard.
-  const [terminalKey, setTerminalKey] = useState(0);
-
   const activeCount = sessions.filter(
     (s) => s.status === "active" || s.status === "waiting",
   ).length;
 
-  const agents = <AgentsPanel sessions={sessions} now={now} cost={cost} />;
-  const serversPanel = <ServersPanel servers={servers} />;
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
 
-  // A terminal/xterm crash is contained to this boundary — the Agents and
-  // Servers panels stay usable. "Try again" remounts a fresh TerminalTabs.
+  // The terminal stays mounted across page switches (display:none when hidden) so
+  // its PTY/buffer survive navigation. A crash is contained to this boundary.
   const terminal = (
-    <ErrorBoundary
-      label="Terminal"
-      onReset={() => setTerminalKey((k) => k + 1)}
-    >
+    <ErrorBoundary label="Terminal" onReset={() => setTerminalKey((k) => k + 1)}>
       <TerminalTabs key={terminalKey} model={model} />
     </ErrorBoundary>
   );
 
   return (
     <div className="flex h-screen flex-col" style={{ backgroundColor: "var(--color-void)" }}>
-      {/* Crown jewel: pinned to the very top of the shell so a pending approval
-          overlays everything on both desktop and mobile. Renders nothing when
-          there are no pending approvals (no layout shift). */}
+      {/* Crown jewel: a pending approval overlays everything, full width on top. */}
       <ApprovalBanner approvals={approvals} />
 
-      <Header
-        status={status}
-        activeCount={activeCount}
-        cost={cost}
-        telegram={<TelegramStatus />}
-        onOpenAccess={() => setAccessOpen(true)}
-        model={model}
-        agents={agentsState}
-        onModelChange={onModelChange}
-      />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* Desktop rail (holds nav + the de-crammed header controls). */}
+        <Sidebar
+          page={page}
+          onNavigate={setPage}
+          activeCount={activeCount}
+          status={status}
+          cost={cost}
+          model={model}
+          agents={agentsState}
+          onModelChange={onModelChange}
+          onOpenAccess={() => setAccessOpen(true)}
+          telegram={<TelegramStatus />}
+          host={host}
+        />
+
+        {/* Mobile top bar — the same controls in a slim header. */}
+        <div className="lg:hidden">
+          <Header
+            status={status}
+            activeCount={activeCount}
+            cost={cost}
+            telegram={<TelegramStatus />}
+            onOpenAccess={() => setAccessOpen(true)}
+            model={model}
+            agents={agentsState}
+            onModelChange={onModelChange}
+          />
+        </div>
+
+        {/* The active page, full width. The terminal keeps a real box for its fit
+            addon; the scrolling pages share a padded, scrollable main. The
+            terminal subtree is always mounted (hidden when off-page) so its PTY
+            survives page switches. */}
+        <main className="relative min-h-0 flex-1 overflow-hidden">
+          <div
+            className="h-full p-1.5 lg:p-3"
+            style={{ display: page === "terminal" ? "block" : "none" }}
+          >
+            <section className="panel flex h-full min-h-0 flex-col overflow-hidden" aria-label="Terminal">
+              {terminal}
+            </section>
+          </div>
+
+          {page !== "terminal" ? (
+            <div className="h-full overflow-y-auto p-3 lg:p-4">
+              {page === "agents" && <AgentsPanel sessions={sessions} now={now} cost={cost} />}
+              {page === "changes" && <ChangesPage sessions={sessions} />}
+              {page === "servers" && <ServersPanel servers={servers} />}
+              {page === "stats" && <StatsPage sessions={sessions} cost={cost} now={now} />}
+            </div>
+          ) : null}
+        </main>
+      </div>
+
+      {/* Mobile bottom nav. */}
+      <MobileNav page={page} onNavigate={setPage} activeCount={activeCount} />
 
       {accessOpen ? <AccessPanel onClose={() => setAccessOpen(false)} /> : null}
-
-      {/* Mobile segmented switch (< lg) — a single inset control so the active
-          surface reads as a clearly raised segment. */}
-      <nav
-        className="flex gap-1 border-b p-2 hairline lg:hidden"
-        aria-label="Dashboard sections"
-        role="tablist"
-      >
-        <div
-          className="flex flex-1 gap-1 rounded-lg p-1"
-          style={{ backgroundColor: "var(--color-void)", border: "1px solid var(--color-line)" }}
-        >
-          {SURFACES.map((s) => {
-            const selected = surface === s.id;
-            const showCount = s.id === "agents" && activeCount > 0;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => onSurfaceChange(s.id)}
-                className="mono flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs tracking-wide transition-colors"
-                style={{
-                  color: selected ? "var(--color-text)" : "var(--color-muted)",
-                  backgroundColor: selected ? "var(--color-panel)" : "transparent",
-                  border: `1px solid ${selected ? "var(--color-line)" : "transparent"}`,
-                }}
-              >
-                {s.label}
-                {showCount ? (
-                  <span
-                    className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[0.625rem] tabular-nums"
-                    style={{
-                      color: "var(--color-signal-ink)",
-                      backgroundColor: "color-mix(in srgb, var(--color-signal) 18%, transparent)",
-                    }}
-                  >
-                    {activeCount}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* Mobile: one surface at a time.
-          Agents/Servers scroll inside a padded main; the Terminal instead gets
-          a fixed full-height (viewport-minus-chrome) non-scrolling panel so the
-          fit addon has a real box and the on-screen keyboard reflows it. The
-          terminal main uses tight padding so xterm fills the available height. */}
-      {surface === "terminal" ? (
-        <main className="min-h-0 flex-1 p-1.5 lg:hidden">
-          <section className="panel flex h-full min-h-0 flex-col overflow-hidden" aria-label="Terminal">
-            {terminal}
-          </section>
-        </main>
-      ) : (
-        <main className="min-h-0 flex-1 overflow-y-auto p-3 lg:hidden">
-          {surface === "agents" && agents}
-          {surface === "servers" && serversPanel}
-        </main>
-      )}
-
-      {/* Desktop: two full-height columns. */}
-      <div className="hidden min-h-0 flex-1 lg:grid lg:grid-cols-2 lg:gap-3 lg:p-3">
-        <div className="flex min-h-0 flex-col gap-3">
-          <section className="flex min-h-0 flex-1 flex-col gap-2" aria-label="Agents">
-            <div className="flex shrink-0 items-center gap-2 px-1">
-              <h2 className="section-label">Agents</h2>
-              {activeCount > 0 ? (
-                <span
-                  className="mono text-[0.625rem] tabular-nums"
-                  style={{ color: "var(--color-signal-ink)" }}
-                >
-                  {activeCount} active
-                </span>
-              ) : null}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">{agents}</div>
-          </section>
-          <section className="flex min-h-[10rem] flex-1 flex-col gap-2" aria-label="Servers">
-            <h2 className="section-label shrink-0 px-1">Servers</h2>
-            {/* A hairline-topped region, not a boxed panel — the server rows are
-                themselves cards, so a second box would double the chrome. */}
-            <div
-              className="min-h-0 flex-1 overflow-y-auto border-t pt-2 hairline"
-              style={{ borderTopColor: "var(--color-line)" }}
-            >
-              {serversPanel}
-            </div>
-          </section>
-        </div>
-        <section className="flex min-h-0 flex-col gap-2" aria-label="Terminal">
-          <h2 className="section-label shrink-0 px-1">Terminal</h2>
-          <div className="panel min-h-0 flex-1 overflow-hidden">{terminal}</div>
-        </section>
-      </div>
     </div>
   );
 }

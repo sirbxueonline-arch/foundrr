@@ -28,6 +28,12 @@ export interface TerminalInputTarget {
 interface TerminalInputBarProps {
   /** The active terminal's imperative handle, or null when none is open. */
   target: TerminalInputTarget | null;
+  /**
+   * Display name of the AI agent running in the ACTIVE tab (e.g. "Claude Code",
+   * "OpenAI Codex", "Gemini CLI"), or null/undefined for a plain shell. Drives
+   * the input placeholder so the bar speaks to whichever agent is in focus.
+   */
+  agentLabel?: string | null;
 }
 
 /** One special key: a human label and the exact bytes it transmits. */
@@ -73,9 +79,15 @@ function KeyButton({ k, onPress }: { k: SpecialKey; onPress: (bytes: string) => 
   );
 }
 
-export function TerminalInputBar({ target }: TerminalInputBarProps) {
+export function TerminalInputBar({ target, agentLabel }: TerminalInputBarProps) {
   const [value, setValue] = useState("");
   const disabled = target === null;
+
+  // Speak to whichever agent owns the active tab; a plain shell just takes a
+  // command. Keeps the bar correct for every AI, not only Claude.
+  const placeholder = agentLabel
+    ? `message ${agentLabel} / a command, then Send`
+    : "type a command, then Send";
 
   const press = (bytes: string): void => {
     if (!target) return;
@@ -121,7 +133,7 @@ export function TerminalInputBar({ target }: TerminalInputBarProps) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           disabled={disabled}
-          placeholder="message Claude / a command, then Send"
+          placeholder={placeholder}
           aria-label="Terminal command input"
           inputMode="text"
           autoCapitalize="off"

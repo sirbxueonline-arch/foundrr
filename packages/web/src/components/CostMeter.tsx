@@ -20,12 +20,16 @@ interface CostMeterProps {
 const OFF_HINT = "telemetry off — run `mc telemetry enable`";
 
 export function CostMeter({ cost }: CostMeterProps) {
-  const isOff = cost === null || (cost.todayUsd === 0 && cost.todayTokens === 0);
+  // Only "off" when there's no snapshot at all. A present snapshot with $0/0
+  // tokens means telemetry IS running and simply has nothing to report yet
+  // (early in the day / right after start) — show the neutral $0.0000 "today"
+  // state, not the misleading "telemetry off" hint.
+  const isOff = cost === null;
 
   if (isOff) {
     return (
       <div
-        className="flex shrink-0 items-baseline gap-2"
+        className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5"
         role="status"
         aria-live="polite"
         title={OFF_HINT}
@@ -37,14 +41,14 @@ export function CostMeter({ cost }: CostMeterProps) {
         >
           {usd(0)}
         </span>
-        <span className="caption hidden sm:inline">telemetry off</span>
+        <span className="caption hidden lg:inline">telemetry off</span>
       </div>
     );
   }
 
   return (
     <div
-      className="flex shrink-0 items-baseline gap-2"
+      className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5"
       role="status"
       aria-live="polite"
       aria-label={`${usd(cost.todayUsd)} today, ${compactTokens(cost.todayTokens)} tokens`}
@@ -57,12 +61,12 @@ export function CostMeter({ cost }: CostMeterProps) {
       </span>
       {/* Token count is secondary — drop it on mobile so the $ figure never clips. */}
       <span
-        className="mono hidden text-xs tabular-nums sm:inline"
+        className="mono hidden text-xs tabular-nums lg:inline"
         style={{ color: "var(--color-muted)" }}
       >
         {compactTokens(cost.todayTokens)} tok
       </span>
-      <span className="caption hidden sm:inline">today</span>
+      <span className="caption hidden lg:inline">today</span>
     </div>
   );
 }

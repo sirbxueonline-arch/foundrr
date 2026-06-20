@@ -62,6 +62,15 @@ CREATE TABLE IF NOT EXISTS settings (
   last_cost REAL DEFAULT 0,
   telegram_mode TEXT DEFAULT 'shared'
 );
+
+-- Persisted cost/token usage, one row per local calendar day. Survives daemon
+-- restarts so "today" and the lifetime total aren't lost; also doubles as the
+-- per-day history a future trends view can read.
+CREATE TABLE IF NOT EXISTS cost_daily (
+  day TEXT PRIMARY KEY,
+  usd REAL NOT NULL DEFAULT 0,
+  tokens INTEGER NOT NULL DEFAULT 0
+);
 `;
 
 /**

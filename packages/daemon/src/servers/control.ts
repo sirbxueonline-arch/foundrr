@@ -86,6 +86,13 @@ export function spawnServer(cwd: string, command: string): number {
 
   try {
     const child = runDetached(spawn, cwd, command);
+    // CRITICAL: a detached child with stdio:'ignore' and NO 'error' listener
+    // turns an ASYNC spawn failure (ENOENT/EACCES surfaced on a later tick) into
+    // an unhandled 'error' event — an uncaught exception that crashes the whole
+    // daemon (dashboard, terminal, cost meter, Telegram leash). Consume it.
+    child.on("error", (err) => {
+      process.stderr.write(`[servers/control] spawn error: ${describe(err)}\n`);
+    });
     child.unref();
     if (typeof child.pid !== "number") {
       throw new Error("spawn produced no pid");

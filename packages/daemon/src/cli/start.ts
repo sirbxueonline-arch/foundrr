@@ -151,6 +151,25 @@ export async function runStart(): Promise<void> {
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
+  // A supervisor daemon must not die on a stray uncaught error (e.g. an async
+  // spawn failure, a proxy edge case) — that would take down the dashboard,
+  // terminal, cost meter, and the Telegram approval leash. Log and stay up;
+  // intentional shutdown still goes through the signal handlers above.
+  process.on("uncaughtException", (err) => {
+    process.stderr.write(
+      `[daemon] uncaught exception (continuing): ${
+        err instanceof Error ? (err.stack ?? err.message) : String(err)
+      }\n`,
+    );
+  });
+  process.on("unhandledRejection", (reason) => {
+    process.stderr.write(
+      `[daemon] unhandled rejection (continuing): ${
+        reason instanceof Error ? (reason.stack ?? reason.message) : String(reason)
+      }\n`,
+    );
+  });
+
   // Keep the process alive (the HTTP server already holds the loop, but be safe).
   await new Promise<void>(() => {
     /* never resolves; exit via signal handlers */

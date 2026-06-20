@@ -34,8 +34,16 @@ function reconcile(
       if (reg.pid !== undefined && reg.pid === server.pid) {
         return true;
       }
-      // Command-substring match (cwd is not always known on a detected proc).
-      return server.command.length > 0 && server.command.includes(reg.command);
+      // Command match (cwd is not always known on a detected proc). Avoid
+      // false positives on short common tokens ("node", "npm", "next"): accept
+      // an EXACT command match, or a substring match only for a reasonably
+      // specific (>=8 char) registered command.
+      const cmd = reg.command.trim();
+      return (
+        cmd.length > 0 &&
+        (server.command === cmd ||
+          (cmd.length >= 8 && server.command.includes(cmd)))
+      );
     });
     return match ? { ...server, registeredId: match.id } : server;
   });
@@ -54,7 +62,7 @@ export class ServerMonitor {
   private lastSignature = "";
   private hasScanned = false;
   private timer: ReturnType<typeof setInterval> | undefined;
-  private scanning = false;
+  private inflight: Promise<DetectedServer[]> | null = null;
 
   constructor(
     private readonly db: Database.Database,
@@ -71,12 +79,25 @@ export class ServerMonitor {
     return this.hasScanned;
   }
 
-  /** Scan now, reconcile, store, and broadcast on change. Never throws. */
-  async scanNow(): Promise<DetectedServer[]> {
-    if (this.scanning) {
-      return this.latest;
+  /**
+   * Scan now, reconcile, store, and broadcast on change. Never throws.
+   * Concurrent callers COALESCE onto the single in-flight scan (and await its
+   * fresh result) rather than getting back the stale snapshot — so a user-forced
+   * `POST /api/servers/scan` landing during the periodic scan still returns
+   * up-to-date data instead of the pre-scan (possibly empty) list.
+   */
+  scanNow(): Promise<DetectedServer[]> {
+    if (this.inflight) {
+      return this.inflight;
     }
-    this.scanning = true;
+    this.inflight = this.runScan();
+    void this.inflight.finally(() => {
+      this.inflight = null;
+    });
+    return this.inflight;
+  }
+
+  private async runScan(): Promise<DetectedServer[]> {
     try {
       const detected = await scanListening();
       let registered: RegisteredServer[] = [];
@@ -100,8 +121,6 @@ export class ServerMonitor {
     } catch (err) {
       process.stderr.write(`[servers/monitor] scan failed: ${describe(err)}\n`);
       return this.latest;
-    } finally {
-      this.scanning = false;
     }
   }
 

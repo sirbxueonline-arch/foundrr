@@ -90,8 +90,20 @@ function persistTabs(tabs: TermTab[]): void {
 }
 
 function nextLabel(existing: TermTab[], base: string): string {
-  const used = existing.filter((t) => t.label.startsWith(base)).length;
-  return used === 0 ? base : `${base} ${used + 1}`;
+  // Use the highest suffix already in use (not the COUNT) so closing an earlier
+  // tab can't make the next one collide with a surviving label — e.g. open
+  // "Shell","Shell 2","Shell 3", close "Shell 2", then the next is "Shell 4".
+  const siblings = existing.filter(
+    (t) => t.label === base || t.label.startsWith(`${base} `),
+  );
+  if (siblings.length === 0) return base;
+  let max = 1; // a bare `base` occupies index 1
+  for (const t of siblings) {
+    if (t.label === base) continue;
+    const n = Number.parseInt(t.label.slice(base.length + 1), 10);
+    if (Number.isInteger(n) && n > max) max = n;
+  }
+  return `${base} ${max + 1}`;
 }
 
 /**
@@ -247,12 +259,12 @@ export function TerminalTabs({ model }: TerminalTabsProps) {
   }, [tabs, activeId]);
 
   const openTab = useCallback((shell: string, base: string): void => {
-    setTabs((prev) => {
-      const id = randomId();
-      const tab: TermTab = { id, shell, label: nextLabel(prev, base) };
-      setActiveId(id);
-      return [...prev, tab];
-    });
+    // Generate the id and select the tab OUTSIDE the updater — calling another
+    // setter inside setTabs's reducer is an anti-pattern that can double-fire
+    // under StrictMode/concurrent rendering. nextLabel still reads `prev`.
+    const id = randomId();
+    setTabs((prev) => [...prev, { id, shell, label: nextLabel(prev, base) }]);
+    setActiveId(id);
   }, []);
 
   const closeTab = useCallback((id: string): void => {
@@ -277,6 +289,11 @@ export function TerminalTabs({ model }: TerminalTabsProps) {
       ? `${selectedModel.name} is IDE-based — no terminal agent. Pick Claude/Codex/Gemini, or use + Shell.`
       : "Loading model…";
 
+  // Name of the AI in the ACTIVE tab (null for a plain shell) — feeds the input
+  // bar so its placeholder addresses whichever agent is in focus, not just Claude.
+  const activeTab = tabs.find((t) => t.id === activeId);
+  const activeAgentName = activeTab ? modelByKey(activeTab.shell)?.name ?? null : null;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Tab bar — a LIGHT strip above the dark console inset: hairline bottom,
@@ -285,7 +302,7 @@ export function TerminalTabs({ model }: TerminalTabsProps) {
           (the live frame); inactive tabs carry no border — whitespace separates
           them. */}
       <div
-        className="flex items-center gap-1 border-b p-1.5 hairline"
+        className="flex flex-col gap-1.5 border-b p-1.5 hairline sm:flex-row sm:items-center sm:gap-1"
         role="tablist"
         aria-label="Terminal tabs"
         style={{ backgroundColor: "var(--color-void)" }}
@@ -296,7 +313,7 @@ export function TerminalTabs({ model }: TerminalTabsProps) {
             return (
               <div
                 key={tab.id}
-                className="mono flex shrink-0 items-center rounded-md text-xs"
+                className="mono flex min-h-10 shrink-0 items-center rounded-md text-xs sm:min-h-0"
                 style={{
                   // Amber-ink label on the active tab (AA on the light strip);
                   // inactive tabs read muted.
@@ -398,7 +415,9 @@ export function TerminalTabs({ model }: TerminalTabsProps) {
       {/* Mobile-friendly input: special-keys bar + command bar, wired to the
           active terminal. Shown whenever a terminal is open; tasteful on desktop
           too. Sits below the terminal so it never overlaps the scrollback. */}
-      {tabs.length > 0 ? <TerminalInputBar target={activeHandle} /> : null}
+      {tabs.length > 0 ? (
+        <TerminalInputBar target={activeHandle} agentLabel={activeAgentName} />
+      ) : null}
     </div>
   );
 }

@@ -14,6 +14,8 @@
  * a live readout, not a billing ledger). Persisting a daily total to SQLite is
  * a follow-up if the restart-zeroing proves annoying.
  */
+import type Database from "better-sqlite3";
+
 import type { CostSnapshot, CostMessage } from "@mission-control/shared";
 
 import { COST_BROADCAST_DEBOUNCE_MS } from "../constants.js";
@@ -36,9 +38,50 @@ export class CostStore {
 
   constructor(
     private readonly registry: StreamRegistry,
+    private readonly db: Database.Database,
     now: number = Date.now(),
   ) {
     this.currentDay = new Date(now).toDateString();
+    // Restore today's persisted totals so a same-day restart doesn't zero the
+    // meter (the whole point: usage isn't lost across restarts).
+    const row = this.db
+      .prepare("SELECT usd, tokens FROM cost_daily WHERE day = ?")
+      .get(this.currentDay) as { usd: number; tokens: number } | undefined;
+    if (row) {
+      this.todayUsd = row.usd;
+      this.todayTokens = row.tokens;
+    }
+  }
+
+  /** Upsert a usd/token delta onto today's persisted daily row. */
+  private persist(usd: number, tokens: number): void {
+    try {
+      this.db
+        .prepare(
+          "INSERT INTO cost_daily (day, usd, tokens) VALUES (?, ?, ?) " +
+            "ON CONFLICT(day) DO UPDATE SET usd = usd + excluded.usd, tokens = tokens + excluded.tokens",
+        )
+        .run(this.currentDay, usd, tokens);
+    } catch (err) {
+      // Never let a persistence hiccup break the live meter.
+      process.stderr.write(
+        `[cost/store] persist failed: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+    }
+  }
+
+  /** All-time totals summed across every persisted day. */
+  private lifetime(): { usd: number; tokens: number } {
+    try {
+      const row = this.db
+        .prepare(
+          "SELECT COALESCE(SUM(usd), 0) AS usd, COALESCE(SUM(tokens), 0) AS tokens FROM cost_daily",
+        )
+        .get() as { usd: number; tokens: number };
+      return { usd: row.usd, tokens: row.tokens };
+    } catch {
+      return { usd: this.todayUsd, tokens: this.todayTokens };
+    }
   }
 
   /** Reset today's totals if the local day has advanced since last ingest. */
@@ -69,6 +112,7 @@ export class CostStore {
     this.session(sessionId).usd += usd;
     this.todayUsd += usd;
     this.updatedAt = now;
+    this.persist(usd, 0);
     this.scheduleBroadcast();
   }
 
@@ -81,6 +125,7 @@ export class CostStore {
     this.session(sessionId).tokens += n;
     this.todayTokens += n;
     this.updatedAt = now;
+    this.persist(0, n);
     this.scheduleBroadcast();
   }
 
@@ -91,9 +136,12 @@ export class CostStore {
     for (const [id, totals] of this.sessions) {
       sessions[id] = { usd: totals.usd, tokens: totals.tokens };
     }
+    const lifetime = this.lifetime();
     return {
       todayUsd: this.todayUsd,
       todayTokens: this.todayTokens,
+      lifetimeUsd: lifetime.usd,
+      lifetimeTokens: lifetime.tokens,
       sessions,
       updatedAt: this.updatedAt,
     };

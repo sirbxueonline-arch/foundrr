@@ -52,7 +52,7 @@ export async function startDaemon(config: Config): Promise<RunningDaemon> {
   const previewProxy = new PreviewProxyService();
 
   const ptyManager = new PtyManager();
-  const costStore = new CostStore(registry);
+  const costStore = new CostStore(registry, db);
 
   // Anonymous global usage sharing (P4). On by default, single-flag opt-out via
   // `mc telemetry share off`. Reads the cost store's lifetime totals, diffs them

@@ -53,7 +53,7 @@ export const MODELS: readonly ModelInfo[] = Object.freeze([
     command: "gemini",
     install: "npm i -g @google/gemini-cli",
   },
-  { key: "cursor", name: "Cursor", vendor: "Anysphere", accent: "#e6eaf0" },
+  { key: "cursor", name: "Cursor", vendor: "Anysphere", accent: "#111827" },
   {
     key: "github-copilot",
     name: "GitHub Copilot",

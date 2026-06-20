@@ -19,6 +19,7 @@ import { useState } from "react";
 import { MODELS, modelByKey } from "@mission-control/shared";
 
 import { ApiError, setModelApi, type LaunchableAgent } from "../lib/api";
+import { logoForKey } from "./BrandLogos";
 
 interface ModelPickerProps {
   /** The selected model key; null until loaded by the parent. */
@@ -52,6 +53,9 @@ export function ModelPicker({ model, agents, onModelChange }: ModelPickerProps) 
   const [error, setError] = useState<string | null>(null);
 
   const onSelect = async (next: string): Promise<void> => {
+    // Serialize: ignore a new pick while a save is in flight so overlapping
+    // requests can't revert to a stale `previous` on failure.
+    if (pending) return;
     const previous = model;
     if (next === previous) return;
     // Optimistic: reflect the choice immediately via the parent, then persist.
@@ -74,54 +78,40 @@ export function ModelPicker({ model, agents, onModelChange }: ModelPickerProps) 
   };
 
   const disabled = model === null || pending;
+  // Show the selected model's official brand mark inside the control.
+  const SelectedLogo = model ? logoForKey(model) : null;
 
   return (
-    <div className="flex shrink-0 items-center gap-1.5">
-      {/* cpu glyph — the "which AI" affordance. */}
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-        style={{ color: "var(--color-faint)" }}
-        className="hidden sm:block"
-      >
-        <rect x="4" y="4" width="16" height="16" rx="2" />
-        <rect x="9" y="9" width="6" height="6" />
-        <line x1="9" y1="1" x2="9" y2="4" />
-        <line x1="15" y1="1" x2="15" y2="4" />
-        <line x1="9" y1="20" x2="9" y2="23" />
-        <line x1="15" y1="20" x2="15" y2="23" />
-        <line x1="20" y1="9" x2="23" y2="9" />
-        <line x1="20" y1="14" x2="23" y2="14" />
-        <line x1="1" y1="9" x2="4" y2="9" />
-        <line x1="1" y1="14" x2="4" y2="14" />
-      </svg>
-
-      <div className="relative inline-flex items-center">
-        {/* Active accent dot — the chosen model uses --signal (the board's amber). */}
-        <span
-          className="pointer-events-none absolute left-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{
-            backgroundColor: model ? "var(--color-signal)" : "var(--color-faint)",
-          }}
-          aria-hidden="true"
-        />
+    <div className="flex min-w-0 items-center gap-1.5 lg:w-full">
+      <div className="relative inline-flex items-center lg:w-full">
+        {/* The selected model's brand logo (a neutral dot until it loads). */}
+        {SelectedLogo ? (
+          <span
+            className="pointer-events-none absolute left-2 flex items-center"
+            style={{ color: "var(--color-text)" }}
+            aria-hidden="true"
+          >
+            <SelectedLogo size={15} />
+          </span>
+        ) : (
+          <span
+            className="pointer-events-none absolute left-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: "var(--color-faint)" }}
+            aria-hidden="true"
+          />
+        )}
         <select
           aria-label="AI model"
           title={`AI: ${labelFor(model)}`}
           value={model ?? ""}
           disabled={disabled}
           onChange={(e) => void onSelect(e.target.value)}
-          className="mono cursor-pointer appearance-none rounded-md pl-5 pr-6 text-[0.6875rem] tracking-wider transition-colors disabled:cursor-default disabled:opacity-60"
+          onFocus={() => setError(null)}
+          // h-10 (40px) touch target on mobile, compact 30px on desktop. The
+          // max-w cap stops a native <select> from sizing to its WIDEST option
+          // ("…· not installed") and ballooning the header; it truncates instead.
+          className="mono h-10 min-w-0 max-w-[9.5rem] cursor-pointer appearance-none rounded-md pl-7 pr-6 text-[0.6875rem] tracking-wider transition-colors lg:h-[1.875rem] lg:w-full lg:max-w-none disabled:cursor-default disabled:opacity-60"
           style={{
-            height: "1.875rem", // ~30px box; gap + touch padding lands near 36px overall
-            minWidth: "5.5rem",
             color: "var(--color-text)",
             backgroundColor: "color-mix(in srgb, var(--color-line) 35%, transparent)",
             border: "1px solid var(--color-line)",

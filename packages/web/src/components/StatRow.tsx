@@ -1,47 +1,55 @@
 /**
- * StatRow — a compact mono row of session telemetry. Each cell shows a value
- * (JetBrains Mono, tabular) above a tiny faint caption. Uses fixed cells so
- * updating values never shifts layout.
+ * StatRow — the session's work counters as a single refined metric strip.
+ *
+ * Each metric reads as "<value> <label>" inline (e.g. "13 tools"), with the
+ * value carried in JetBrains Mono / tabular numerals and the label in a quiet
+ * lowercase sans. Metrics are separated by thin hairline rules rather than boxed
+ * into a grid — Aqua separates with hairlines + whitespace, and an inline strip
+ * avoids the generic "number stacked over an uppercase micro-caption" look.
+ *
+ * A metric whose value is 0 is dimmed (not hidden, so the strip never reflows),
+ * which lets the eye land on what's actually happened this session.
  */
 import type { AgentStats } from "@mission-control/shared";
-import { uptime } from "../lib/format";
 
 interface StatRowProps {
   stats: AgentStats;
-  /** Session start (epoch ms) used to render live uptime. */
-  startedAt: number;
-  /** Daemon-derived "now" so uptime stays correct under clock skew. */
-  now: number;
 }
 
-interface Cell {
-  caption: string;
-  value: string;
+interface Metric {
+  label: string;
+  value: number;
 }
 
-export function StatRow({ stats, startedAt, now }: StatRowProps) {
-  const cells: Cell[] = [
-    { caption: "files", value: String(stats.filesEdited) },
-    { caption: "tools", value: String(stats.tools) },
-    { caption: "cmds", value: String(stats.commands) },
-    { caption: "subagents", value: String(stats.subagents) },
-    { caption: "prompts", value: String(stats.prompts) },
-    { caption: "uptime", value: uptime(startedAt, now) },
+export function StatRow({ stats }: StatRowProps) {
+  const metrics: Metric[] = [
+    { label: "files", value: stats.filesEdited },
+    { label: "tools", value: stats.tools },
+    { label: "cmds", value: stats.commands },
+    { label: "subagents", value: stats.subagents },
+    { label: "prompts", value: stats.prompts },
   ];
 
   return (
-    // 2 rows of 3 on mobile, one row of 6 on desktop. Each stat owns its own grid
-    // cell, so labels (e.g. SUBAGENTS / PROMPTS) can never overlap at 390px.
-    <dl className="grid grid-cols-3 gap-x-3 gap-y-2 sm:grid-cols-6">
-      {cells.map((cell) => (
-        <div key={cell.caption} className="flex min-w-0 flex-col items-start gap-1">
+    // Whitespace-separated inline metrics (Aqua favors whitespace over rules).
+    // A generous gap-x keeps each "value label" pair distinct; wrapping on a
+    // narrow phone leaves no stray separators behind.
+    <dl className="flex flex-wrap items-baseline gap-x-4 gap-y-1.5">
+      {metrics.map((metric) => (
+        <div
+          key={metric.label}
+          className="flex items-baseline gap-1.5"
+          style={{ opacity: metric.value === 0 ? 0.4 : 1 }}
+        >
           <dd
-            className="mono text-sm leading-none tabular-nums"
+            className="mono text-sm font-medium leading-none tabular-nums"
             style={{ color: "var(--color-text)" }}
           >
-            {cell.value}
+            {metric.value}
           </dd>
-          <dt className="caption w-full truncate text-[10px]">{cell.caption}</dt>
+          <dt className="text-[0.6875rem] leading-none" style={{ color: "var(--color-faint)" }}>
+            {metric.label}
+          </dt>
         </div>
       ))}
     </dl>

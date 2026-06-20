@@ -81,10 +81,14 @@ export function Header({
         ) : null}
       </div>
 
-      <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
+      {/* Below lg this STACKS into two rows (brand row, controls row) so the
+          control cluster can never overlap the wordmark on phones/tablets — the
+          old single-row `sm:` layout collapsed the flex-1 brand to 0 and the
+          shrink-0 cluster bled over it. At lg it's one row again. */}
+      <div className="flex flex-col gap-2 px-3 py-2.5 lg:flex-row lg:items-center lg:gap-4 lg:px-4 lg:py-3">
         {/* Wordmark + hostname + active count. Allowed to shrink/truncate so the
-            right-side controls (cost, dot) are never clipped off on mobile. */}
-        <div className="flex min-w-0 flex-1 items-baseline gap-2 sm:gap-3">
+            right-side controls (cost, dot) are never clipped off. */}
+        <div className="flex min-w-0 items-baseline gap-2 lg:flex-1 lg:gap-3">
           <span
             className="flex shrink-0 items-baseline gap-1.5 text-sm font-light tracking-tight sm:text-base"
             style={{ color: "var(--color-text)" }}
@@ -97,7 +101,7 @@ export function Header({
             <span>Foundrr</span>
           </span>
           {host ? (
-            <span className="mono hidden truncate text-xs sm:inline" style={{ color: "var(--color-faint)" }}>
+            <span className="mono hidden truncate text-xs lg:inline" style={{ color: "var(--color-faint)" }}>
               {host}
             </span>
           ) : null}
@@ -111,7 +115,7 @@ export function Header({
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 lg:shrink-0 lg:gap-4">
           {/* Pick your AI — tags telemetry + the global leaderboard bucket, and
               drives which agent the terminal launches. */}
           <ModelPicker model={model} agents={agents} onModelChange={onModelChange} />
@@ -143,8 +147,16 @@ export function Header({
             <span>CONNECT</span>
           </button>
 
-          {/* Secondary status text — hidden on mobile to keep the row tidy. */}
-          <span className="hidden sm:inline-flex">{telegram}</span>
+          {/* Secondary status text — only in the full desktop strip. */}
+          <span className="hidden lg:inline-flex">{telegram}</span>
+
+          {/* Hairline divider — groups the spend/connection telemetry apart from
+              the model + access controls so the strip reads in two calm halves. */}
+          <span
+            className="hidden h-4 w-px shrink-0 lg:block"
+            style={{ backgroundColor: "var(--color-line)" }}
+            aria-hidden="true"
+          />
 
           <CostMeter cost={cost} />
 
@@ -155,7 +167,7 @@ export function Header({
           />
           {/* CONNECTED/CONNECTING label is secondary — the dot carries it on mobile. */}
           <span
-            className="mono hidden text-[0.625rem] tracking-wider sm:inline"
+            className="mono hidden text-[0.625rem] tracking-wider lg:inline"
             style={{ color: conn.text }}
             role="status"
             aria-live="polite"

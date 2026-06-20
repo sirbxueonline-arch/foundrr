@@ -23,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { DetectedServer, RegisteredServer } from "@mission-control/shared";
 import { EmptyState } from "./EmptyState";
 import { ServerRow, type ServerAction, type ServerEntry } from "./ServerRow";
+import { isWebServer } from "../lib/serverKind";
 import { RegisterServerForm } from "./RegisterServerForm";
 import {
   ApiError,
@@ -36,7 +37,7 @@ import {
   stopRegistered,
   unexposeServer,
 } from "../lib/api";
-import { previewUrl } from "../lib/preview";
+import { previewOpenUrl } from "../lib/preview";
 
 interface ServersPanelProps {
   /** Live detected servers from the WS stream (useStream().servers). */
@@ -98,6 +99,10 @@ export function ServersPanel({ servers }: ServersPanelProps) {
   const [registered, setRegistered] = useState<RegisteredServer[]>([]);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Default to DEV servers only — hide the OS background processes (Spotify,
+  // ControlCenter, rapportd, …) that merely hold a port. Toggle to reveal them
+  // (you can still STOP a rogue background process from there).
+  const [showAll, setShowAll] = useState(false);
   const mountedRef = useRef(true);
 
   const refetchRegistered = useCallback(async (): Promise<void> => {
@@ -119,7 +124,12 @@ export function ServersPanel({ servers }: ServersPanelProps) {
     };
   }, [refetchRegistered]);
 
-  const entries = mergeEntries(servers, registered);
+  const allEntries = mergeEntries(servers, registered);
+  // Dev servers = registered recipes + anything that looks like a real web/dev
+  // server; everything else is OS background noise the founder doesn't care about.
+  const devEntries = allEntries.filter(isWebServer);
+  const hiddenCount = allEntries.length - devEntries.length;
+  const entries = showAll ? allEntries : devEntries;
 
   const runAction = useCallback(
     async (entry: ServerEntry, action: Exclude<ServerAction, "open">): Promise<void> => {
@@ -139,7 +149,12 @@ export function ServersPanel({ servers }: ServersPanelProps) {
       // the blank tab stranded on about:blank (we'd have no handle to navigate).
       // The target is the user's own dev server on the same origin, so opener
       // access is fine.
-      const previewWindow = action === "expose" ? window.open("", "_blank") : null;
+      // Only pre-open a tab when there's a real port to navigate it to, so an
+      // expose on a port-less entry never strands a blank about:blank tab.
+      const previewWindow =
+        action === "expose" && entry.detected?.port !== undefined
+          ? window.open("", "_blank")
+          : null;
 
       try {
         const regId = entry.registered?.id;
@@ -163,10 +178,13 @@ export function ServersPanel({ servers }: ServersPanelProps) {
           case "expose":
             if (port !== undefined) {
               await exposeServer(port);
-              // Same-origin path URL — opens over LAN http AND https tunnel.
-              const url = previewUrl(port);
+              // Same-origin path URL (with a one-time token that the daemon turns
+              // into a cookie) — opens over LAN http AND an https tunnel.
+              const url = previewOpenUrl(port);
               if (previewWindow) previewWindow.location.replace(url);
               else window.open(url, "_blank", "noopener,noreferrer");
+            } else if (previewWindow) {
+              previewWindow.close();
             }
             break;
           case "unexpose":
@@ -209,7 +227,22 @@ export function ServersPanel({ servers }: ServersPanelProps) {
               or register a server to Start/Restart it from here.
             </>
           }
-          action={<RegisterServerForm onRegistered={handleRegistered} />}
+          action={
+            <div className="flex flex-col items-center gap-3">
+              <RegisterServerForm onRegistered={handleRegistered} />
+              {hiddenCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAll((v) => !v)}
+                  className="pill self-center"
+                >
+                  {showAll
+                    ? "Hide background services"
+                    : `Show ${hiddenCount} background service${hiddenCount === 1 ? "" : "s"}`}
+                </button>
+              ) : null}
+            </div>
+          }
         />
       </div>
     );
@@ -217,9 +250,12 @@ export function ServersPanel({ servers }: ServersPanelProps) {
 
   return (
     <div className="flex h-full flex-col gap-3 p-1">
-      <div className="flex items-center justify-between gap-3">
+      {/* flex-wrap so the OPEN register form (w-full) drops to its own full-width
+          row instead of being crammed into the right half on a phone. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="caption">
-          {entries.length} server{entries.length === 1 ? "" : "s"}
+          {entries.length} {showAll ? "server" : "dev server"}
+          {entries.length === 1 ? "" : "s"}
         </span>
         <RegisterServerForm onRegistered={handleRegistered} />
       </div>
@@ -235,6 +271,19 @@ export function ServersPanel({ servers }: ServersPanelProps) {
           />
         ))}
       </div>
+
+      {/* Reveal/hide the OS background processes that merely hold a port. */}
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="pill self-center"
+        >
+          {showAll
+            ? "Hide background services"
+            : `Show ${hiddenCount} background service${hiddenCount === 1 ? "" : "s"}`}
+        </button>
+      ) : null}
     </div>
   );
 }
