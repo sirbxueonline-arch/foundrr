@@ -1,8 +1,9 @@
 /**
  * `mc setup` — a guided, idempotent first-run that gets a fresh install ready
  * in one command. It runs the unavoidable steps in order (home dir + token,
- * hooks install) and then prints the dashboard URL plus a clearly listed set of
- * optional follow-ups (model picker, Telegram leash, cost telemetry).
+ * hooks install, token-recording OTel env) and then prints the dashboard URL
+ * plus a clearly listed set of optional follow-ups (model picker, Telegram
+ * leash, usage-sharing opt-out).
  *
  * Design notes:
  *   - SAFE TO RE-RUN. Every step it performs is itself idempotent: loadConfig()
@@ -19,8 +20,10 @@ import { loadConfig } from "../config.js";
 import { openDb } from "../db/index.js";
 import { getSettings } from "../db/settings-repo.js";
 import { modelByKey } from "@mission-control/shared";
+import { writeTelemetryEnv } from "./claude-settings.js";
 import { localDashboardUrl } from "./dashboard-url.js";
 import { runHooksInstall } from "./hooks.js";
+import { telemetryEnv } from "./telemetry.js";
 import { color, dim, ok } from "./util.js";
 
 /** The shared Founder Telegram bot every install can link to (no BotFather). */
@@ -63,17 +66,23 @@ export function runSetup(): void {
   step(2, "Claude Code hooks");
   runHooksInstall();
 
-  // 3. Dashboard URL — the thing the user actually wants.
-  step(3, "Open the dashboard");
+  // 3. Token recording. Wire the OTel env into ~/.claude/settings.json so cost/
+  //    token metrics flow with no manual paste. Idempotent + backed up; on any
+  //    error it prints the block to apply by hand instead of throwing.
+  step(3, "Token recording (OTel env)");
+  writeTelemetryEnv(telemetryEnv(config.port));
+
+  // 4. Dashboard URL — the thing the user actually wants.
+  step(4, "Open the dashboard");
   const url = localDashboardUrl(config.host, config.port, config.token);
   process.stdout.write(`   URL: ${color.cyan(url)}\n`);
   process.stdout.write(`   Start the daemon, then open it: ${color.bold("mc start")}\n`);
 
-  // 4. Optional follow-ups — printed as exact commands, never prompted.
+  // 5. Optional follow-ups — printed as exact commands, never prompted.
   const { model, telegramMode } = readState(config.dbPath);
   const modelInfo = modelByKey(model);
 
-  step(4, "Optional follow-ups");
+  step(5, "Optional follow-ups");
   process.stdout.write(
     `   ${color.cyan("•")} Pick your agent/model (for the leaderboard): ` +
       `${color.bold("mc config model <key>")}\n`,
@@ -91,21 +100,26 @@ export function runSetup(): void {
       `Mode: ${telegramMode}. Approve/deny from your phone.`,
   );
   process.stdout.write(
-    `   ${color.cyan("•")} Feed cost/token metrics: ${color.bold("mc telemetry enable")}\n`,
+    `   ${color.cyan("•")} Token recording is ON (wired above). ` +
+      `Anonymous usage sharing: ${color.bold("mc telemetry share status")}\n`,
   );
   dim(
-    "     Prints an OTel env block to add to ~/.claude/settings.json. " +
-      "Anonymous usage sharing is ON by default (opt out: mc telemetry share off).",
+    "     Cost/token metrics already flow into the dashboard. Anonymous usage " +
+      "sharing is ON by default (opt out: mc telemetry share off).",
   );
 
-  // 5. Closing checklist — what's done vs. what's optional.
+  // 6. Closing checklist — what's done vs. what's optional.
   process.stdout.write(`\n${color.bold("Done")}\n`);
   ok("Home dir + access token");
   ok("Claude Code hooks installed");
+  ok("Token recording enabled in ~/.claude/settings.json");
   process.stdout.write(`\n${color.bold("Optional (run when you want them)")}\n`);
   dim("  • mc config model <key>   — set your agent/model");
   dim("  • mc telegram link        — link the shared leash bot");
-  dim("  • mc telemetry enable     — wire up the cost meter");
+  dim("  • mc telemetry share off  — opt out of anonymous usage sharing");
 
-  process.stdout.write(`\n${color.bold("Next:")} run ${color.cyan("mc start")} and open the URL above.\n\n`);
+  process.stdout.write(
+    `\n${color.bold("Next:")} restart Claude Code (so the telemetry env applies), ` +
+      `then run ${color.cyan("mc start")} and open the URL above.\n\n`,
+  );
 }

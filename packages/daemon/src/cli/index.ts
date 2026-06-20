@@ -20,7 +20,7 @@ Usage:
   mc start              Start the daemon and print the dashboard URL
   mc hooks print        Print a paste-ready hooks block for ~/.claude/settings.json
   mc hooks install      Install the hooks into ~/.claude/settings.json (with backup)
-  mc telemetry enable   Print the OTel env block to feed Claude Code cost/token metrics
+  mc telemetry enable [--write]  Print the OTel env block (--write also adds it to ~/.claude/settings.json)
   mc telemetry share on|off|status  Anonymous global usage sharing (ON by default; easy opt-out)
   mc config model <key>|show  Set/show the agent/model you run (used for the global leaderboard)
   mc telegram link      Get a code to link this install to the Founder shared bot

@@ -63,10 +63,16 @@ mc start                       # start the daemon; open the printed URL
 ```
 
 That's it. **`mc setup` replaces the old manual multi-step dance** — it creates
-your home dir + access token, installs the Claude Code hooks (backing up
-`~/.claude/settings.json` first), prints the dashboard URL with `?token=…`, and
-lists the optional follow-ups. It's **idempotent**, so re-running it is safe and
-just reprints the current state.
+your home dir + access token, installs the Claude Code hooks, **auto-enables
+token recording by writing the `OTEL_*` env block into `~/.claude/settings.json`**
+(backing the file up first), prints the dashboard URL with `?token=…`, and lists
+the optional follow-ups. It's **idempotent**, so re-running it is safe and just
+reprints the current state. Restart Claude Code after `mc setup` so the telemetry
+env applies.
+
+> **Using Claude Code on this repo?** A root [`CLAUDE.md`](./CLAUDE.md) is
+> auto-read as project instructions — it has the full clone-to-running setup, so
+> you can just ask Claude to "set up Founder."
 
 `mc setup` finishes by pointing you at the two extras most people want:
 
@@ -167,14 +173,19 @@ stored and whether a chat is linked).
 
 ## Cost meter
 
+`mc setup` already enables this for you (it writes the `OTEL_*` env block into
+`~/.claude/settings.json`). To wire it up by hand later:
+
 ```bash
-mc telemetry enable
+mc telemetry enable           # PRINTS the OTEL_* env block (does not edit anything)
+mc telemetry enable --write   # ALSO writes it into ~/.claude/settings.json (backed up)
 ```
 
-This **prints** an `OTEL_*` env block (it does not edit anything for you). Add
-it to `~/.claude/settings.json` under an `"env"` block, or export it in your
-shell profile. Once Claude Code is emitting metrics, the dashboard shows live
-**$ today / $ session** within ~10s of activity.
+Plain `mc telemetry enable` only prints — add the block to
+`~/.claude/settings.json` under an `"env"` block, or export it in your shell
+profile. `--write` does that merge for you (idempotent + backed up). Restart
+Claude Code so the env applies. Once Claude Code is emitting metrics, the
+dashboard shows live **$ today / $ session** within ~10s of activity.
 
 ---
 
@@ -284,7 +295,7 @@ Telegram with `/link <NEW_TOKEN>` if you use the leash.
 | `mc hooks print`           | Print a paste-ready hooks block for `~/.claude/settings.json`   |
 | `mc hooks install`         | Install the hooks into `~/.claude/settings.json` (with backup)  |
 | `mc doctor`                | Run an environment preflight checklist                          |
-| `mc telemetry enable`      | Print the `OTEL_*` env block for cost/token metrics             |
+| `mc telemetry enable [--write]` | Print the `OTEL_*` env block (`--write` also adds it to `~/.claude/settings.json`) |
 | `mc telegram setup <t>`    | Store a Telegram bot token (the leash)                          |
 | `mc telegram status`       | Show whether a bot token is stored and a chat is linked         |
 | `mc tunnel [--yes]`        | Expose the dashboard at a public Cloudflare HTTPS URL (see warning) |

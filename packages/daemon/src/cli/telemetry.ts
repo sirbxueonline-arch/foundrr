@@ -2,8 +2,10 @@
  * `mc telemetry enable` — print a ready-to-use OpenTelemetry env block that
  * points Claude Code's OTLP exporter at this daemon's /v1/metrics receiver.
  *
- * We ONLY print. We never auto-edit ~/.claude/settings.json or shell profiles —
- * the user decides where these vars live. Two safe options are explained:
+ * Plain `mc telemetry enable` ONLY prints (back-compat) — the user decides where
+ * these vars live. `mc telemetry enable --write` (or `-w`) ALSO writes them into
+ * ~/.claude/settings.json under an "env" block (backed up + merged idempotently)
+ * so token recording turns on with no manual paste. The two safe options are:
  *   1. ~/.claude/settings.json under an "env": { ... } block (Claude Code reads it).
  *   2. exported in the user's shell profile.
  */
@@ -12,10 +14,11 @@ import { OTEL_EXPORT_INTERVAL_MS } from "../constants.js";
 import { openDb } from "../db/index.js";
 import { getSettings, setTelemetryShare } from "../db/settings-repo.js";
 import { resolveInstallId } from "../telemetry/install-id.js";
+import { writeTelemetryEnv } from "./claude-settings.js";
 import { color, dim, err, ok } from "./util.js";
 
 /** The OTLP env vars Claude Code needs, given the daemon's port. */
-function telemetryEnv(port: number): Record<string, string> {
+export function telemetryEnv(port: number): Record<string, string> {
   return {
     CLAUDE_CODE_ENABLE_TELEMETRY: "1",
     OTEL_METRICS_EXPORTER: "otlp",
@@ -27,7 +30,7 @@ function telemetryEnv(port: number): Record<string, string> {
 }
 
 const USAGE =
-  "usage: mc telemetry enable | mc telemetry share on|off|status\n";
+  "usage: mc telemetry enable [--write|-w] | mc telemetry share on|off|status\n";
 
 /**
  * `mc telemetry share <on|off|status>` — control anonymous global usage
@@ -99,6 +102,14 @@ export function runTelemetry(sub: string | undefined, arg?: string): void {
     return;
   }
 
+  const wantsWrite = arg === "--write" || arg === "-w";
+  if (arg !== undefined && !wantsWrite) {
+    process.stdout.write(`unknown telemetry enable flag: ${arg}\n`);
+    process.stdout.write(USAGE);
+    process.exitCode = 1;
+    return;
+  }
+
   const config = loadConfig();
   const env = telemetryEnv(config.port);
 
@@ -112,7 +123,21 @@ export function runTelemetry(sub: string | undefined, arg?: string): void {
   }
 
   process.stdout.write("\n");
-  dim("How to apply (pick one — Mission Control will NOT edit these for you):");
+
+  // --write: do the wiring for the user (idempotent, backed up). Plain enable
+  // stays print-only for back-compat.
+  if (wantsWrite) {
+    writeTelemetryEnv(env);
+    process.stdout.write("\n");
+    dim(
+      `Metrics appear within ~${OTEL_EXPORT_INTERVAL_MS / 1000}s of the next Claude Code activity.`,
+    );
+    dim("Run the daemon (mc start) so /v1/metrics is listening to receive them.");
+    process.stdout.write("\n");
+    return;
+  }
+
+  dim("How to apply (pick one — or re-run with --write to do option 1 for you):");
   process.stdout.write(
     `  ${color.cyan("•")} Add them to ${color.bold("~/.claude/settings.json")} under an "env" block:\n`,
   );
