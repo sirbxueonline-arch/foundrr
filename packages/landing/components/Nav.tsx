@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { GITHUB_URL } from "@/lib/config";
 
 function GitHubMark() {
@@ -51,6 +53,12 @@ export function Nav() {
               {link.label}
             </a>
           ))}
+          <Link
+            href="/setup"
+            className="text-sm text-muted transition-colors hover:text-text"
+          >
+            Setup
+          </Link>
         </div>
 
         <a

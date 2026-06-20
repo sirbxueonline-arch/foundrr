@@ -35,13 +35,15 @@ function readSettings(path: string): Record<string, unknown> {
 }
 
 /** Back up an existing settings.json next to itself (timestamped). */
-function backupSettings(path: string): void {
+function backupSettings(path: string, quiet: boolean): void {
   if (!existsSync(path)) {
     return;
   }
   const backup = `${path}.bak-${Date.now()}`;
   writeFileSync(backup, readFileSync(path));
-  dim(`backed up existing settings to ${backup}`);
+  if (!quiet) {
+    dim(`backed up existing settings to ${backup}`);
+  }
 }
 
 /**
@@ -79,32 +81,48 @@ function printEnvBlock(env: Record<string, string>): void {
   process.stdout.write(`${color.dim(jsonBlock)}\n`);
 }
 
+/** Outcome of a {@link writeTelemetryEnv} call, for callers that want detail. */
+export type TelemetryWriteResult = "wrote" | "unchanged" | "failed";
+
 /**
  * Idempotently write the OTel `env` block into ~/.claude/settings.json.
  *
  * Safe to re-run: a second run detects the keys are already present and reports
  * "no changes" instead of duplicating anything. Never throws — on any failure
- * it prints the block + a clear message and returns `false`.
+ * it prints the block + a clear message and returns `"failed"`.
  *
- * @returns true if the settings file is now wired up (whether or not this call
- *          changed it); false only if we had to fall back to printing.
+ * Pass `quiet: true` to suppress this function's own status chatter (used by the
+ * `mc start` auto-on path, which prints a single banner line of its own). The
+ * manual-fallback block is still printed on failure even when quiet, so a broken
+ * settings file is never silently swallowed.
+ *
+ * @returns `"wrote"` if it changed the file, `"unchanged"` if already wired up,
+ *          `"failed"` if it had to fall back to printing.
  */
-export function writeTelemetryEnv(env: Record<string, string>): boolean {
+export function writeTelemetryEnv(
+  env: Record<string, string>,
+  options: { quiet?: boolean } = {},
+): TelemetryWriteResult {
+  const quiet = options.quiet ?? false;
   const path = claudeSettingsPath();
   try {
     mkdirSync(dirname(path), { recursive: true });
     const settings = readSettings(path);
-    backupSettings(path);
+    backupSettings(path, quiet);
 
     const { next, changed } = mergeEnv(settings, env);
     if (!changed) {
-      ok(`Token recording already enabled in ${path} (no changes).`);
-      return true;
+      if (!quiet) {
+        ok(`Token recording already enabled in ${path} (no changes).`);
+      }
+      return "unchanged";
     }
 
     writeFileSync(path, `${JSON.stringify(next, null, 2)}\n`);
-    ok(`Enabled token recording in ${path} (restart Claude Code to apply).`);
-    return true;
+    if (!quiet) {
+      ok(`Enabled token recording in ${path} (restart Claude Code to apply).`);
+    }
+    return "wrote";
   } catch (e) {
     err(
       `could not write token recording env to ${path}: ` +
@@ -112,6 +130,6 @@ export function writeTelemetryEnv(env: Record<string, string>): boolean {
     );
     dim("Add this block to ~/.claude/settings.json by hand instead:");
     printEnvBlock(env);
-    return false;
+    return "failed";
   }
 }

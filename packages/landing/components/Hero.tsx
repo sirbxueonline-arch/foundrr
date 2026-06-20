@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { GITHUB_URL } from "@/lib/config";
 
 function GitHubMark() {
@@ -14,7 +16,7 @@ function GitHubMark() {
   );
 }
 
-function ArrowDown() {
+function ArrowRight() {
   return (
     <svg
       width="15"
@@ -26,9 +28,9 @@ function ArrowDown() {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      className="transition-transform group-hover:translate-y-0.5"
+      className="transition-transform group-hover:translate-x-0.5"
     >
-      <path d="M12 5v14M19 12l-7 7-7-7" />
+      <path d="M5 12h14M12 5l7 7-7 7" />
     </svg>
   );
 }
@@ -94,13 +96,13 @@ export function Hero() {
             <GitHubMark />
             Get it on GitHub
           </a>
-          <a
-            href="#how-it-works"
+          <Link
+            href="/setup"
             className="group inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-line bg-[color-mix(in_srgb,var(--panel)_70%,transparent)] px-7 py-3.5 font-medium text-text backdrop-blur-sm transition-colors hover:border-[var(--cool)] hover:text-cool"
           >
             How it works
-            <ArrowDown />
-          </a>
+            <ArrowRight />
+          </Link>
         </div>
 
         {/* Install command terminal chip */}
