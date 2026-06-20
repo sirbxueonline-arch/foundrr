@@ -2,6 +2,7 @@
 
 import { useLiveData, type LiveData } from "@/lib/useLiveData";
 import { MODELS, resolveModel } from "@/lib/models";
+import { logoForKey } from "@/components/BrandLogos";
 import { formatCompact, formatInt, formatUsd, relativeTime } from "@/lib/format";
 import type { LeaderboardRow } from "@/lib/supabase";
 
@@ -70,6 +71,7 @@ function Row({
   maxTokens: number;
 }) {
   const model = resolveModel(row.agent);
+  const Logo = logoForKey(model.key);
   const isLeader = rank === 1 && row.total_tokens > 0;
   const share = maxTokens > 0 ? (row.total_tokens / maxTokens) * 100 : 0;
   const hasData = row.total_tokens > 0 || row.installs > 0;
@@ -91,15 +93,19 @@ function Row({
           {rank}
         </span>
         <span
-          className="h-8 w-1.5 shrink-0 rounded-full"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border"
           style={{
-            backgroundColor: model.color,
+            color: model.color,
+            borderColor: `color-mix(in srgb, ${model.color} 28%, var(--line))`,
+            backgroundColor: `color-mix(in srgb, ${model.color} 12%, transparent)`,
             boxShadow: isLeader
-              ? `0 0 12px color-mix(in srgb, ${model.color} 60%, transparent)`
+              ? `0 0 12px color-mix(in srgb, ${model.color} 40%, transparent)`
               : "none",
           }}
           aria-hidden
-        />
+        >
+          <Logo size={17} />
+        </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-medium text-text">{model.name}</span>

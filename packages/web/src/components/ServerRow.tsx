@@ -19,6 +19,7 @@ import type { DetectedServer, RegisteredServer } from "@mission-control/shared";
 import { Pulse } from "./Pulse";
 import { truncate } from "../lib/format";
 import { isWebServer } from "../lib/serverKind";
+import { checkPreviewReachable, previewUnreachableMessage, previewUrl } from "../lib/preview";
 
 export type ServerAction =
   | "open"
@@ -97,6 +98,10 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
   // When set, a 0.0.0.0 reverse proxy is live for this server — preview is on.
   const proxyPort = detected?.exposedProxyPort;
   const isExposed = proxyPort !== undefined;
+  // The proxy serves plain HTTP on a LAN-only port. From an HTTPS or remote
+  // context it can't open (mixed content / unroutable), so OPEN PREVIEW becomes
+  // an explained, disabled state rather than a dead link to about:blank.
+  const previewReachable = checkPreviewReachable().reachable;
   // Only offer browser affordances (Open / Preview) for things that actually
   // look like a web server — not background system services (ControlCenter,
   // Spotify, …) that merely hold a port. STOP is still allowed for anything.
@@ -173,20 +178,37 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
 
           {showOpen && isExposed ? (
             <>
-              <a
-                href={openUrl(proxyPort)}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mono rounded-md px-2 py-1 text-[0.625rem] font-medium tracking-wider transition-colors"
-                style={{
-                  color: "var(--color-signal)",
-                  borderColor: "var(--color-signal)",
-                  borderWidth: 1,
-                  backgroundColor: "color-mix(in srgb, var(--color-signal) 10%, transparent)",
-                }}
-              >
-                OPEN PREVIEW
-              </a>
+              {previewReachable ? (
+                <a
+                  href={previewUrl(proxyPort)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mono rounded-md px-2 py-1 text-[0.625rem] font-medium tracking-wider transition-colors"
+                  style={{
+                    color: "var(--color-signal)",
+                    borderColor: "var(--color-signal)",
+                    borderWidth: 1,
+                    backgroundColor: "color-mix(in srgb, var(--color-signal) 10%, transparent)",
+                  }}
+                >
+                  OPEN PREVIEW
+                </a>
+              ) : (
+                // HTTPS/remote: the http LAN proxy can't open from here. Render a
+                // disabled, explained chip instead of a dead link to about:blank.
+                <span
+                  className="mono cursor-not-allowed rounded-md px-2 py-1 text-[0.625rem] font-medium tracking-wider opacity-40"
+                  title={previewUnreachableMessage(proxyPort)}
+                  style={{
+                    color: "var(--color-faint)",
+                    borderColor: "var(--color-faint)",
+                    borderWidth: 1,
+                    backgroundColor: "color-mix(in srgb, var(--color-faint) 10%, transparent)",
+                  }}
+                >
+                  PREVIEW (LAN ONLY)
+                </span>
+              )}
               <ControlButton
                 label="STOP PREVIEW"
                 color="var(--color-faint)"
@@ -255,8 +277,17 @@ export function ServerRow({ entry, pending, error, onAction }: ServerRowProps) {
           The hint only appears where Preview is actually offered (web servers),
           so non-web system services never advertise a preview they don't have. */}
       {isExposed ? (
-        <p className="mono text-[0.625rem] leading-tight" style={{ color: "var(--color-signal)" }}>
-          Previewing → :{proxyPort}
+        <p
+          className="mono text-[0.625rem] leading-tight"
+          style={{ color: previewReachable ? "var(--color-signal)" : "var(--color-faint)" }}
+        >
+          {/* Always surface the http proxy URL as copyable text so the user can
+              try it manually on the LAN, even when it can't auto-open here. */}
+          Previewing →{" "}
+          <span className="select-all" style={{ color: "var(--color-text)" }}>
+            {previewUrl(proxyPort)}
+          </span>
+          {previewReachable ? null : " (open on the same Wi-Fi)"}
         </p>
       ) : showOpen ? (
         <p

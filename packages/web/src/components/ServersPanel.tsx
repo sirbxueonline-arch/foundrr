@@ -36,6 +36,7 @@ import {
   stopRegistered,
   unexposeServer,
 } from "../lib/api";
+import { checkPreviewReachable, previewUnreachableMessage, previewUrl } from "../lib/preview";
 
 interface ServersPanelProps {
   /** Live detected servers from the WS stream (useStream().servers). */
@@ -86,15 +87,6 @@ function mergeEntries(
   });
 }
 
-/**
- * Build the remote-preview URL from the browser's current hostname (NEVER
- * "localhost"), so opening it from a phone reaches the dev box over LAN /
- * Tailscale rather than the phone itself.
- */
-function previewUrl(proxyPort: number): string {
-  return `${window.location.protocol}//${window.location.hostname}:${proxyPort}/`;
-}
-
 function actionErrorMessage(action: ServerAction, err: unknown): string {
   const verb = action.charAt(0).toUpperCase() + action.slice(1);
   if (err instanceof ApiError) return `${verb} failed (${err.status})`;
@@ -141,12 +133,15 @@ export function ServersPanel({ servers }: ServersPanelProps) {
 
       // Pre-open a blank tab for Preview *synchronously* inside the click so
       // mobile popup blockers don't suppress it after the await. Navigated once
-      // the proxy port is known; closed if the expose call fails.
+      // the proxy port is known; closed if the expose call fails OR if the
+      // current context can't reach the http preview (HTTPS/remote) — in that
+      // case we never want a tab stranded on about:blank.
       // NOTE: no "noopener" here — that makes window.open() return null, leaving
       // the blank tab stranded on about:blank (we'd have no handle to navigate).
       // The target is the user's own LAN dev server, so opener access is fine.
+      const reachability = action === "expose" ? checkPreviewReachable() : { reachable: true };
       const previewWindow =
-        action === "expose" ? window.open("", "_blank") : null;
+        action === "expose" && reachability.reachable ? window.open("", "_blank") : null;
 
       try {
         const regId = entry.registered?.id;
@@ -170,9 +165,22 @@ export function ServersPanel({ servers }: ServersPanelProps) {
           case "expose":
             if (port !== undefined) {
               const { proxyPort } = await exposeServer(port);
-              const url = previewUrl(proxyPort);
-              if (previewWindow) previewWindow.location.replace(url);
-              else window.open(url, "_blank", "noopener,noreferrer");
+              if (!reachability.reachable) {
+                // HTTPS/remote: opening an http preview here would strand a blank
+                // tab (or be mixed-content-blocked). Keep the proxy exposed so the
+                // user can try the http URL on the LAN, but be honest about it.
+                previewWindow?.close();
+                if (mountedRef.current) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    [entry.key]: previewUnreachableMessage(proxyPort),
+                  }));
+                }
+              } else {
+                const url = previewUrl(proxyPort);
+                if (previewWindow) previewWindow.location.replace(url);
+                else window.open(url, "_blank", "noopener,noreferrer");
+              }
             }
             break;
           case "unexpose":

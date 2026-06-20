@@ -1,6 +1,16 @@
 import Link from "next/link";
 
 import { GITHUB_URL } from "@/lib/config";
+import { logoForKey } from "@/components/BrandLogos";
+
+/** Agents shown in the hero "works with" strip — keys map to brand marks. */
+const HERO_AGENTS: ReadonlyArray<{ key: string; name: string }> = [
+  { key: "claude-code", name: "Claude Code" },
+  { key: "openai-codex", name: "OpenAI Codex" },
+  { key: "gemini-cli", name: "Gemini CLI" },
+  { key: "aider", name: "Aider" },
+  { key: "amazon-q", name: "Amazon Q" },
+];
 
 function GitHubMark() {
   return (
@@ -130,6 +140,30 @@ export function Hero() {
             <span className="text-text">npx</span> founder init
             <span className="caret" aria-hidden />
           </code>
+        </div>
+
+        {/* Works-with strip — real brand marks, reinforcing the agent lineup. */}
+        <div
+          className="rise mt-12"
+          style={{ animationDelay: "300ms" }}
+        >
+          <p className="font-mono text-[0.65rem] uppercase tracking-[0.22em] text-faint">
+            Works with your terminal agents
+          </p>
+          <ul className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+            {HERO_AGENTS.map(({ key, name }) => {
+              const Logo = logoForKey(key);
+              return (
+                <li
+                  key={key}
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-3 py-1.5 text-muted backdrop-blur-sm transition-colors hover:border-[var(--faint)] hover:text-text"
+                >
+                  <Logo size={16} className="text-muted" />
+                  <span className="text-xs font-medium">{name}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </div>
     </header>

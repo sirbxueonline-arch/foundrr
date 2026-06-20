@@ -1,4 +1,5 @@
 import { MODELS } from "@/lib/models";
+import { logoForKey } from "@/components/BrandLogos";
 
 const STEPS = [
   {
@@ -65,33 +66,42 @@ export function ModelsGrid() {
           ))}
         </div>
 
-        <p className="mb-5 font-mono text-[0.7rem] uppercase tracking-[0.24em] text-faint">
-          // supported agents
-        </p>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <p className="font-mono text-[0.7rem] uppercase tracking-[0.24em] text-faint">
+            // supported agents
+          </p>
+          <p className="font-mono text-[0.7rem] text-faint">
+            {MODELS.length} agents · Claude Code precise, others best-effort
+          </p>
+        </div>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {MODELS.map((model) => (
-            <li
-              key={model.key}
-              className="card-hover group flex items-center gap-3 rounded-xl border border-line bg-panel px-3.5 py-3 hover:border-[var(--faint)]"
-            >
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-semibold transition-transform group-hover:scale-110"
-                style={{
-                  color: model.color,
-                  backgroundColor: `color-mix(in srgb, ${model.color} 14%, transparent)`,
-                }}
-                aria-hidden
+          {MODELS.map((model) => {
+            const Logo = logoForKey(model.key);
+            return (
+              <li
+                key={model.key}
+                className="card-hover group flex items-center gap-3 rounded-xl border border-line bg-panel px-3.5 py-3 hover:border-[var(--faint)]"
               >
-                {model.name.charAt(0)}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-text">
-                  {model.name}
-                </p>
-                <p className="truncate text-xs text-faint">{model.vendor}</p>
-              </div>
-            </li>
-          ))}
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-transform group-hover:scale-110"
+                  style={{
+                    color: model.color,
+                    borderColor: `color-mix(in srgb, ${model.color} 26%, var(--line))`,
+                    backgroundColor: `color-mix(in srgb, ${model.color} 12%, transparent)`,
+                  }}
+                  aria-hidden
+                >
+                  <Logo size={18} />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-text">
+                    {model.name}
+                  </p>
+                  <p className="truncate text-xs text-faint">{model.vendor}</p>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </section>

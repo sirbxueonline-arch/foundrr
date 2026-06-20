@@ -3,12 +3,19 @@
 import { useId, useRef, useState } from "react";
 
 import { CodeBlock } from "@/components/CodeBlock";
+import { logoForKey } from "@/components/BrandLogos";
 
 /** A single terminal coding agent shown in the tabbed installer. */
 interface Agent {
   readonly id: string;
   readonly name: string;
   readonly vendor: string;
+  /** Accent color used for the logo tile + active tab tint. */
+  readonly color: string;
+  /** One-line summary shown in the panel header. */
+  readonly blurb: string;
+  /** Short capability tags surfaced as chips in the panel. */
+  readonly tags: readonly string[];
   /** One-line install command, or null for agents installed per-platform. */
   readonly command: string | null;
   readonly link: { readonly href: string; readonly label: string };
@@ -29,6 +36,9 @@ const AGENTS: readonly Agent[] = [
     id: "claude-code",
     name: "Claude Code",
     vendor: "Anthropic",
+    color: "#f2a23c",
+    blurb: "First-class support. Precise token + cost metering and hook install.",
+    tags: ["Recommended", "Precise metering", "Hooks auto-install"],
     command: "npm install -g @anthropic-ai/claude-code",
     link: { href: CLAUDE_CODE_URL, label: "claude.com/claude-code" },
   },
@@ -36,6 +46,9 @@ const AGENTS: readonly Agent[] = [
     id: "openai-codex",
     name: "OpenAI Codex",
     vendor: "OpenAI",
+    color: "#10a37f",
+    blurb: "The Codex CLI agent. Sessions and token spend tracked best-effort.",
+    tags: ["npm global", "Best-effort metering"],
     command: "npm install -g @openai/codex",
     link: { href: CODEX_URL, label: "github.com/openai/codex" },
   },
@@ -43,6 +56,9 @@ const AGENTS: readonly Agent[] = [
     id: "gemini-cli",
     name: "Gemini CLI",
     vendor: "Google",
+    color: "#4285f4",
+    blurb: "Google's open-source terminal agent. Runs alongside Founder.",
+    tags: ["npm global", "Best-effort metering"],
     command: "npm install -g @google/gemini-cli",
     link: { href: GEMINI_CLI_URL, label: "github.com/google-gemini/gemini-cli" },
   },
@@ -50,6 +66,9 @@ const AGENTS: readonly Agent[] = [
     id: "aider",
     name: "Aider",
     vendor: "open source",
+    color: "#74c69d",
+    blurb: "Pair-programming in your terminal. Installs cleanly via pipx.",
+    tags: ["pipx", "Best-effort metering"],
     command: "pipx install aider-chat",
     link: { href: AIDER_URL, label: "aider.chat" },
   },
@@ -57,6 +76,9 @@ const AGENTS: readonly Agent[] = [
     id: "amazon-q",
     name: "Amazon Q",
     vendor: "AWS",
+    color: "#ff9900",
+    blurb: "The Amazon Q Developer CLI. Installs per-platform from AWS.",
+    tags: ["Per-platform", "AWS guide"],
     command: null,
     link: {
       href: AMAZON_Q_DOCS_URL,
@@ -86,12 +108,43 @@ function ExternalIcon() {
   );
 }
 
+/** A brand-tinted square tile holding an agent's inline logo mark. */
+function LogoTile({
+  agentId,
+  color,
+  size = 18,
+  tile = 34,
+}: {
+  agentId: string;
+  color: string;
+  size?: number;
+  tile?: number;
+}) {
+  const Logo = logoForKey(agentId);
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-lg border"
+      style={{
+        width: tile,
+        height: tile,
+        color,
+        borderColor: `color-mix(in srgb, ${color} 28%, var(--line))`,
+        backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
+      }}
+      aria-hidden
+    >
+      <Logo size={size} />
+    </span>
+  );
+}
+
 /**
- * Accessible tabbed agent picker. A `tablist` of terminal agents sits above a
- * single `tabpanel` that shows only the selected agent's install command + link.
+ * Accessible tabbed agent picker with brand logos. A `tablist` of terminal
+ * agents sits in a left rail (top row on mobile) beside a single `tabpanel`
+ * showing the selected agent's logo, blurb, capability chips, and install line.
  *
- * Keyboard: Left/Right (and Home/End) move between tabs using roving tabindex,
- * matching the WAI-ARIA tabs pattern. Selection follows focus.
+ * Keyboard: Up/Down + Left/Right (and Home/End) move between tabs using roving
+ * tabindex, matching the WAI-ARIA tabs pattern. Selection follows focus.
  */
 export function AgentInstaller() {
   const [activeId, setActiveId] = useState<string>(AGENTS[0]!.id);
@@ -135,101 +188,146 @@ export function AgentInstaller() {
   };
 
   return (
-    <div className="rounded-2xl border border-line bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] p-2 sm:p-3">
-      {/* ── Tablist ──────────────────────────────────────────────────────── */}
-      <div
-        role="tablist"
-        aria-label="Choose your AI coding agent"
-        aria-orientation="horizontal"
-        className="flex gap-1 overflow-x-auto rounded-xl bg-[color-mix(in_srgb,var(--void-2)_70%,transparent)] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {AGENTS.map((agent, i) => {
-          const selected = agent.id === activeId;
-          return (
-            <button
-              key={agent.id}
-              ref={(el) => {
-                tabRefs.current[i] = el;
-              }}
-              role="tab"
-              id={`${baseId}-tab-${agent.id}`}
-              aria-selected={selected}
-              aria-controls={`${baseId}-panel-${agent.id}`}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => setActiveId(agent.id)}
-              onKeyDown={(e) => onKeyDown(e, i)}
-              className={`relative shrink-0 whitespace-nowrap rounded-lg px-3.5 py-2 font-display text-sm font-medium transition-colors sm:px-4 ${
-                selected
-                  ? "bg-[color-mix(in_srgb,var(--signal)_14%,var(--panel))] text-text shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--signal)_40%,transparent)]"
-                  : "text-muted hover:bg-[color-mix(in_srgb,var(--panel)_70%,transparent)] hover:text-text"
-              }`}
-            >
-              {agent.name}
-              {selected ? (
-                <span
-                  className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-signal"
-                  aria-hidden
-                />
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Quiet IDE note — not a tab. */}
-      <p className="mt-2.5 px-1.5 text-xs text-faint leading-relaxed">
-        Cursor, GitHub Copilot, Cline, Windsurf, and Continue are IDE-based — they
-        run inside your editor, so there&apos;s no terminal agent to install.
-      </p>
-
-      {/* ── Panel: only the active agent ─────────────────────────────────── */}
-      <div
-        role="tabpanel"
-        id={`${baseId}-panel-${active.id}`}
-        aria-labelledby={`${baseId}-tab-${active.id}`}
-        tabIndex={0}
-        className="mt-2 rounded-xl border border-line bg-panel p-5 focus-visible:outline-2 focus-visible:outline-cool sm:p-6"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-display text-lg font-semibold text-text">
-              {active.name}
-            </h3>
-            <p className="mt-0.5 font-mono text-xs text-faint">{active.vendor}</p>
-          </div>
-          <a
-            href={active.link.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 font-mono text-xs text-muted transition-colors hover:text-cool"
+    <div className="overflow-hidden rounded-2xl border border-line bg-[color-mix(in_srgb,var(--panel)_55%,transparent)]">
+      <div className="grid lg:grid-cols-[15rem_1fr]">
+        {/* ── Tablist: left rail on desktop, horizontal scroll on mobile ───── */}
+        <div className="border-b border-line p-2 lg:border-b-0 lg:border-r lg:p-2.5">
+          <p className="hidden px-2.5 pb-2 pt-1.5 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-faint lg:block">
+            Choose your agent
+          </p>
+          <div
+            role="tablist"
+            aria-label="Choose your AI coding agent"
+            aria-orientation="vertical"
+            className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {active.link.label}
-            <ExternalIcon />
-          </a>
+            {AGENTS.map((agent, i) => {
+              const selected = agent.id === activeId;
+              return (
+                <button
+                  key={agent.id}
+                  ref={(el) => {
+                    tabRefs.current[i] = el;
+                  }}
+                  role="tab"
+                  id={`${baseId}-tab-${agent.id}`}
+                  aria-selected={selected}
+                  aria-controls={`${baseId}-panel-${agent.id}`}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setActiveId(agent.id)}
+                  onKeyDown={(e) => onKeyDown(e, i)}
+                  className={`group relative flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-left font-display text-sm font-medium transition-colors lg:w-full ${
+                    selected
+                      ? "bg-[color-mix(in_srgb,var(--signal)_13%,var(--panel))] text-text shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--signal)_34%,transparent)]"
+                      : "text-muted hover:bg-[color-mix(in_srgb,var(--panel)_75%,transparent)] hover:text-text"
+                  }`}
+                >
+                  <LogoTile agentId={agent.id} color={agent.color} tile={28} size={16} />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate leading-tight">{agent.name}</span>
+                    <span className="hidden truncate text-[0.7rem] font-normal text-faint lg:block">
+                      {agent.vendor}
+                    </span>
+                  </span>
+                  {selected ? (
+                    <span
+                      className="ml-auto hidden h-1.5 w-1.5 rounded-full bg-signal lg:block"
+                      aria-hidden
+                    />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {active.command ? (
-          <div className="mt-5">
-            <CodeBlock code={active.command} prompt="$" />
-          </div>
-        ) : (
-          <>
-            {active.note ? (
-              <p className="mt-4 text-sm text-muted leading-relaxed">
-                {active.note}
-              </p>
-            ) : null}
+        {/* ── Panel: only the active agent ─────────────────────────────────── */}
+        <div
+          role="tabpanel"
+          id={`${baseId}-panel-${active.id}`}
+          aria-labelledby={`${baseId}-tab-${active.id}`}
+          tabIndex={0}
+          className="bg-[color-mix(in_srgb,var(--void-2)_45%,transparent)] p-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-cool sm:p-7"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <LogoTile agentId={active.id} color={active.color} tile={44} size={24} />
+              <div>
+                <h3 className="font-display text-xl font-semibold tracking-tight text-text">
+                  {active.name}
+                </h3>
+                <p className="mt-0.5 font-mono text-xs text-faint">
+                  {active.vendor}
+                </p>
+              </div>
+            </div>
             <a
               href={active.link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-5 inline-flex w-fit items-center gap-2 rounded-lg border border-line bg-[color-mix(in_srgb,var(--void-2)_88%,transparent)] px-4 py-2.5 text-sm font-medium text-text transition-colors hover:border-[var(--cool)] hover:text-cool"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[color-mix(in_srgb,var(--panel)_60%,transparent)] px-3 py-1.5 font-mono text-xs text-muted transition-colors hover:border-[var(--cool)] hover:text-cool"
             >
-              {active.link.label}
+              Docs
               <ExternalIcon />
             </a>
-          </>
-        )}
+          </div>
+
+          <p className="mt-4 max-w-xl text-sm text-muted leading-relaxed">
+            {active.blurb}
+          </p>
+
+          {/* Capability chips */}
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {active.tags.map((tag, i) => {
+              const primary = i === 0;
+              return (
+                <li
+                  key={tag}
+                  className={`rounded-full border px-2.5 py-1 font-mono text-[0.68rem] tracking-wide ${
+                    primary
+                      ? "border-[color-mix(in_srgb,var(--signal)_40%,var(--line))] bg-[color-mix(in_srgb,var(--signal)_12%,transparent)] text-signal"
+                      : "border-line bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] text-muted"
+                  }`}
+                >
+                  {tag}
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="mt-5 border-t border-line/70 pt-5">
+            <p className="mb-2.5 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-faint">
+              {active.command ? "Install" : "How to install"}
+            </p>
+            {active.command ? (
+              <CodeBlock code={active.command} prompt="$" />
+            ) : (
+              <>
+                {active.note ? (
+                  <p className="text-sm text-muted leading-relaxed">
+                    {active.note}
+                  </p>
+                ) : null}
+                <a
+                  href={active.link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex w-fit items-center gap-2 rounded-lg border border-line bg-[color-mix(in_srgb,var(--void-2)_88%,transparent)] px-4 py-2.5 text-sm font-medium text-text transition-colors hover:border-[var(--cool)] hover:text-cool"
+                >
+                  {active.link.label}
+                  <ExternalIcon />
+                </a>
+              </>
+            )}
+          </div>
+
+          {/* Quiet IDE note — not a tab. */}
+          <p className="mt-5 text-xs text-faint leading-relaxed">
+            Cursor, GitHub Copilot, Cline, Windsurf, and Continue are IDE-based —
+            they run inside your editor, so there&apos;s no terminal agent to
+            install.
+          </p>
+        </div>
       </div>
     </div>
   );
