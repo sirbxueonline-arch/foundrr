@@ -12,7 +12,7 @@ function TokenCounter({ value }: { value: number }) {
       className="font-mono tabular-nums text-signal signal-glow leading-none flex items-baseline justify-center"
       aria-label={`${formatInt(value)} tokens`}
     >
-      <span className="flex items-baseline text-[clamp(2.75rem,11vw,6.5rem)] font-semibold tracking-[-0.02em]">
+      <span className="flex items-baseline text-[clamp(1.75rem,13cqi,4.75rem)] max-w-full font-semibold tracking-[-0.02em]">
         {groups.map((group, i) => (
           <span key={i} className="flex items-baseline">
             {i > 0 && (
@@ -32,7 +32,7 @@ function DollarCounter({ value }: { value: number }) {
   const animated = useCountUp(value);
   return (
     <div
-      className="font-mono tabular-nums text-signal signal-glow leading-none text-[clamp(2.75rem,11vw,6.5rem)] font-semibold tracking-[-0.02em]"
+      className="font-mono tabular-nums text-signal signal-glow leading-none text-[clamp(1.75rem,13cqi,4.75rem)] max-w-full font-semibold tracking-[-0.02em]"
       aria-label={`${formatUsd(value)} total spend`}
     >
       {formatUsd(animated)}
@@ -78,11 +78,11 @@ export function Counters({ initial }: { initial: LiveData }) {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <div className="group flex flex-col items-center gap-5 rounded-2xl border border-line bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-6 py-12 text-center transition-colors hover:border-[color-mix(in_srgb,var(--signal)_30%,var(--line))]">
+          <div className="group @container overflow-hidden flex flex-col items-center gap-5 rounded-2xl border border-line bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-6 py-12 text-center transition-colors hover:border-[color-mix(in_srgb,var(--signal)_30%,var(--line))]">
             <Label live={!isEmpty}>Total tokens metered</Label>
             <TokenCounter value={totals.total_tokens} />
           </div>
-          <div className="group flex flex-col items-center gap-5 rounded-2xl border border-line bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-6 py-12 text-center transition-colors hover:border-[color-mix(in_srgb,var(--signal)_30%,var(--line))]">
+          <div className="group @container overflow-hidden flex flex-col items-center gap-5 rounded-2xl border border-line bg-[color-mix(in_srgb,var(--panel)_55%,transparent)] px-6 py-12 text-center transition-colors hover:border-[color-mix(in_srgb,var(--signal)_30%,var(--line))]">
             <Label live={!isEmpty}>Total spend tracked</Label>
             <DollarCounter value={totals.total_cost_usd} />
           </div>
