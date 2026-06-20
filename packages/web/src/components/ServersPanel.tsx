@@ -142,8 +142,11 @@ export function ServersPanel({ servers }: ServersPanelProps) {
       // Pre-open a blank tab for Preview *synchronously* inside the click so
       // mobile popup blockers don't suppress it after the await. Navigated once
       // the proxy port is known; closed if the expose call fails.
+      // NOTE: no "noopener" here — that makes window.open() return null, leaving
+      // the blank tab stranded on about:blank (we'd have no handle to navigate).
+      // The target is the user's own LAN dev server, so opener access is fine.
       const previewWindow =
-        action === "expose" ? window.open("", "_blank", "noopener,noreferrer") : null;
+        action === "expose" ? window.open("", "_blank") : null;
 
       try {
         const regId = entry.registered?.id;
