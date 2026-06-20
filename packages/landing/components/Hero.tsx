@@ -23,10 +23,12 @@ function ArrowRight() {
 }
 
 /**
- * Hero — light off-white canvas. Headline-first: an oversized, thin two-line
- * headline carries the section. A short muted subline + one quiet secondary
- * link. Ambient blob field sits behind at extremely low contrast. A quiet
- * scroll cue hints at what's below. No amber here — the headline is the look.
+ * Hero — light off-white canvas, modeled on Aqua's real hero. Headline-first
+ * and left-aligned: an oversized, thin two-line headline carries the whole
+ * section with no eyebrow above it (Aqua leads with the line itself). A short
+ * muted subline + one quiet secondary link sit beneath. The ambient blob field
+ * is the soft white-cloud texture behind. Aqua closes its hero with a single
+ * quiet centered scroll dash — kept here. No amber: the headline is the look.
  */
 export function Hero() {
   const reduce = useReducedMotion();
@@ -48,39 +50,33 @@ export function Hero() {
       id="top"
       className="relative overflow-hidden bg-canvas"
     >
-      {/* Aurora / mesh field + grain + vignette — the hero centerpiece. */}
+      {/* Aurora / mesh field + grain + vignette — Aqua's soft cloud texture. */}
       <AuroraField />
 
-      <div className="relative mx-auto max-w-4xl px-5 pt-28 pb-24 sm:pt-36 sm:pb-32 text-center">
-        <motion.p
-          {...lineUp(0)}
-          className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-ink-faint"
-        >
-          Open-source dev supervision
-        </motion.p>
-
-        <h1 className="mt-7 font-display text-[2.6rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[4.5rem] sm:leading-[1.02]">
+      <div className="relative mx-auto max-w-5xl px-5 pt-32 pb-20 sm:pt-44 sm:pb-28">
+        {/* Headline first — left-aligned and oversized, exactly Aqua's hero. */}
+        <h1 className="max-w-3xl font-display text-[2.75rem] font-light leading-[1.04] tracking-[-0.025em] text-ink sm:text-[5rem] sm:leading-[0.98]">
           <span className="line-mask">
-            <span className="line-rise font-light" style={lineDelay(0.18)}>
+            <span className="line-rise font-light" style={lineDelay(0.12)}>
               You left the desk.
             </span>
           </span>
           <span className="line-mask">
-            <span className="line-rise font-light" style={lineDelay(0.3)}>
+            <span className="line-rise font-light" style={lineDelay(0.24)}>
               Your agents kept working.
             </span>
           </span>
         </h1>
 
         <motion.p
-          {...lineUp(0.5)}
-          className="mx-auto mt-8 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg"
+          {...lineUp(0.42)}
+          className="mt-9 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg"
         >
           Founder is a local command center for your terminal agents. Watch every
           session live, and approve what they ask — from anywhere.
         </motion.p>
 
-        <motion.div {...lineUp(0.6)} className="mt-9">
+        <motion.div {...lineUp(0.52)} className="mt-8">
           <a
             href="#how-it-works"
             className="group inline-flex items-center gap-2 text-sm font-medium text-ink underline-offset-4 hover:underline"
@@ -90,20 +86,19 @@ export function Hero() {
           </a>
         </motion.div>
 
-        {/* Quiet scroll cue. */}
-        <div className="mt-24 flex justify-center" aria-hidden>
+        {/* Aqua's quiet scroll cue: a single centered dash that bobs. */}
+        <div className="mt-24 flex justify-center sm:mt-32" aria-hidden>
           <span className="scroll-cue text-ink-faint">
             <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
+              width="22"
+              height="10"
+              viewBox="0 0 22 10"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.4"
               strokeLinecap="round"
-              strokeLinejoin="round"
             >
-              <path d="M12 5v14M5 12l7 7 7-7" />
+              <path d="M2 3l9 4 9-4" />
             </svg>
           </span>
         </div>

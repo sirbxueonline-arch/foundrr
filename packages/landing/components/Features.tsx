@@ -2,17 +2,18 @@ import { Reveal } from "@/components/Reveal";
 import { MeshWhisper } from "@/components/Ambient";
 import type { ReactNode } from "react";
 
+// Thin 1px line icons, Aqua-light. Hairline stroke, no fill, generous canvas.
 const STROKE = {
   fill: "none" as const,
   stroke: "currentColor",
-  strokeWidth: 1.4,
+  strokeWidth: 1.2,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
 };
 
 function AgentsIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden {...STROKE}>
+    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden {...STROKE}>
       <rect x="3" y="4" width="18" height="13" rx="2" />
       <path d="M7 9l3 2.5L7 14M13 14h4M8 21h8" />
     </svg>
@@ -21,7 +22,7 @@ function AgentsIcon() {
 
 function ServersIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden {...STROKE}>
+    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden {...STROKE}>
       <rect x="3" y="4" width="18" height="6" rx="1.5" />
       <rect x="3" y="14" width="18" height="6" rx="1.5" />
       <path d="M7 7h.01M7 17h.01" />
@@ -31,7 +32,7 @@ function ServersIcon() {
 
 function LeashIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden {...STROKE}>
+    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden {...STROKE}>
       <rect x="6.5" y="2.5" width="11" height="19" rx="2.5" />
       <path d="M10.5 18.5h3" />
     </svg>
@@ -63,28 +64,34 @@ const FEATURES: ReadonlyArray<Feature> = [
 ];
 
 /**
- * Light feature triple. Thin 1px line icons, a near-bold label, one muted
- * line each. Separated by hairlines, lots of negative space.
+ * Light feature triple — built to Aqua's exact restraint. Three bare columns
+ * separated by whitespace only: a thin 1px line icon, a small label, and one
+ * muted line each. No card grid, no borders, no shadows — the negative space
+ * does the separating. This is the bottom of Aqua's claim/comparison block,
+ * carried here as its own airy band.
  */
 export function Features() {
   return (
-    <section id="features" className="relative overflow-hidden border-t border-hairline bg-canvas">
+    <section
+      id="features"
+      className="relative overflow-hidden border-t border-hairline bg-canvas"
+    >
       <MeshWhisper />
-      <div className="relative mx-auto max-w-5xl px-5 py-24 sm:py-32">
-        <div className="grid gap-px overflow-hidden rounded-2xl border border-hairline bg-hairline sm:grid-cols-3">
+      <div className="relative mx-auto max-w-5xl px-5 py-20 sm:py-28">
+        <div className="grid gap-x-10 gap-y-12 sm:grid-cols-3">
           {FEATURES.map((feature, i) => (
             <Reveal
               key={feature.label}
               delay={i * 0.08}
-              className="group flex flex-col bg-canvas p-8 transition-colors duration-300 hover:bg-canvas-raised sm:p-10"
+              className="group flex flex-col"
             >
               <span className="text-ink transition-transform duration-300 motion-safe:group-hover:-translate-y-0.5">
                 {feature.icon}
               </span>
-              <h3 className="mt-6 text-lg font-medium text-ink">
+              <h3 className="mt-5 text-base font-semibold text-ink">
                 {feature.label}
               </h3>
-              <p className="mt-2.5 text-[0.95rem] leading-relaxed text-ink-muted">
+              <p className="mt-2 max-w-xs text-[0.9rem] leading-relaxed text-ink-muted">
                 {feature.body}
               </p>
             </Reveal>

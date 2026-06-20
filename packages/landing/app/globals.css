@@ -200,6 +200,157 @@ body {
 }
 
 /* ============================================================
+   Hero aurora — the home hero's *living* version of the blob field.
+   Scoped to `.hero-aurora` so the shared `.blob` classes stay subtle
+   on /setup. Here the blobs travel further, scale more, and cross-fade
+   on offset loops of differing duration (13 / 17 / 21 / 26s, with
+   negative delays) so the field never reads as periodic or static.
+   Alphas are nudged into the perceptible-but-restrained 6–16% band and
+   the blur is softened a touch so the motion actually reads on the
+   light canvas. A slow gradient sweep (`hero-mesh-sweep`) pans behind
+   them. Headline contrast (ink #1b2128 on #f6f7f9) is untouched — the
+   field sits well below the text and never tints it.
+   ============================================================ */
+.hero-aurora .blob {
+  filter: blur(56px);
+}
+.hero-aurora .blob-a {
+  width: 54vw;
+  height: 54vw;
+  left: -14vw;
+  top: -12vw;
+  opacity: 0.7;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, var(--ink) 11%, transparent),
+    transparent 68%
+  );
+  animation: hero-drift-a 21s ease-in-out infinite;
+  animation-delay: -4s;
+}
+.hero-aurora .blob-b {
+  width: 48vw;
+  height: 48vw;
+  right: -12vw;
+  top: -2vw;
+  opacity: 0.65;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, #6f7d8f 14%, transparent),
+    transparent 68%
+  );
+  animation: hero-drift-b 17s ease-in-out infinite;
+  animation-delay: -9s;
+}
+.hero-aurora .blob-c {
+  width: 40vw;
+  height: 40vw;
+  left: 28vw;
+  bottom: -16vw;
+  opacity: 0.6;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, var(--signal) 13%, transparent),
+    transparent 68%
+  );
+  animation: hero-drift-c 26s ease-in-out infinite;
+  animation-delay: -6s;
+}
+.hero-aurora .blob-d {
+  width: 34vw;
+  height: 34vw;
+  right: 4vw;
+  bottom: -10vw;
+  opacity: 0.55;
+  filter: blur(56px);
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, #8a97a8 12%, transparent),
+    transparent 68%
+  );
+  animation: hero-drift-d 13s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+/* Larger travel + scale + opacity cross-fade so the drift is obvious
+   at a glance but stays smooth (transform/opacity only → GPU, 60fps). */
+@keyframes hero-drift-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.62;
+  }
+  50% {
+    transform: translate3d(7vw, 5vw, 0) scale(1.18);
+    opacity: 0.78;
+  }
+}
+@keyframes hero-drift-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.04);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate3d(-6vw, 4vw, 0) scale(1.2);
+    opacity: 0.72;
+  }
+}
+@keyframes hero-drift-c {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.48;
+  }
+  50% {
+    transform: translate3d(5vw, -6vw, 0) scale(1.22);
+    opacity: 0.7;
+  }
+}
+@keyframes hero-drift-d {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.02);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate3d(-5vw, -4vw, 0) scale(1.16);
+    opacity: 0.62;
+  }
+}
+
+/* Slow conic gradient sweep that rotates forever behind the blobs —
+   a second, independent motion source so the field always looks alive
+   even between blob peaks. Cool greys + a faint amber arc; soft-light
+   blend keeps it a whisper over the off-white. */
+.hero-mesh-sweep {
+  position: absolute;
+  inset: -25%;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(72px);
+  opacity: 0.5;
+  mix-blend-mode: soft-light;
+  will-change: transform;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    color-mix(in srgb, var(--ink) 9%, transparent),
+    transparent 22%,
+    color-mix(in srgb, #6f7d8f 11%, transparent) 42%,
+    transparent 60%,
+    color-mix(in srgb, var(--signal) 9%, transparent) 76%,
+    transparent 92%,
+    color-mix(in srgb, var(--ink) 9%, transparent)
+  );
+  animation: hero-sweep 34s linear infinite;
+}
+@keyframes hero-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
    Grain / noise overlay — an SVG fractal-noise data URI tiled at
    very low alpha. Adds the faintest texture so large flat areas
    never read as dead white/black. Static; no animation.
@@ -587,6 +738,7 @@ body {
   .blob-b,
   .blob-c,
   .blob-d,
+  .hero-mesh-sweep,
   .radial-bloom,
   .line-rise {
     animation: none !important;

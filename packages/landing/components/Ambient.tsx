@@ -55,15 +55,22 @@ export function useParallax(strength = 1) {
 }
 
 /**
- * AuroraField — the hero centerpiece. A slowly-drifting field of large blurred
- * radial gradients (cool greys + the faintest amber) plus a grain overlay and
- * a soft vignette. Gently parallaxes the blob layer for depth.
+ * AuroraField — the hero centerpiece. A living mesh/aurora gradient: several
+ * large blurred radial blobs that continuously drift, scale and cross-fade on
+ * offset loops, layered over a slow animated gradient sweep so the field is
+ * clearly, calmly in motion. Cool greys + the faintest amber, on the light
+ * canvas. The `hero-aurora` scope carries the stronger hero-only motion so the
+ * shared `.blob` classes stay subtle on /setup. Plus a grain overlay, a soft
+ * vignette, and a gentle scroll parallax for depth. All motion freezes under
+ * prefers-reduced-motion (the gradients remain visible, just still).
  */
 export function AuroraField() {
   const parallax = useParallax(1);
 
   return (
-    <div className="blob-field" aria-hidden>
+    <div className="blob-field hero-aurora" aria-hidden>
+      {/* Slow continuous gradient sweep behind the blobs. */}
+      <span className="hero-mesh-sweep" />
       <div ref={parallax} className="absolute inset-0">
         <span className="blob blob-a" />
         <span className="blob blob-b" />

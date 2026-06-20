@@ -5,18 +5,22 @@ import { useCountUp } from "@/lib/useCountUp";
 import { formatInt, formatUsd } from "@/lib/format";
 
 /**
- * Big live telemetry numerals — dark canvas. Oversized JetBrains Mono numbers,
- * each over a hairline underline with a tiny caption. Data is real: it reads
- * the live global_totals through useLiveData (server-seeded, client-polled).
+ * Big live telemetry numerals — dark canvas, modeled on Aqua's "Results you
+ * notice immediately" stat band. Each oversized JetBrains Mono number sits over
+ * a full-width hairline rule, with a tiny caption pushed to the right end of
+ * that rule (number left, caption right, on the underline row) — exactly Aqua's
+ * treatment. Data is real: it reads live global_totals through useLiveData.
  */
 function LiveStat({
   value,
   caption,
+  note,
   ariaLabel,
   live,
 }: {
   value: string;
   caption: string;
+  note: string;
   ariaLabel: string;
   live: boolean;
 }) {
@@ -28,8 +32,10 @@ function LiveStat({
       >
         {value}
       </span>
-      <span className="mt-5 border-t border-line pt-3 font-mono text-[0.66rem] uppercase tracking-[0.18em] text-faint">
-        <span className="inline-flex items-center gap-2">
+      {/* Full-width hairline rule; caption left, short note pushed right —
+          Aqua's exact stat-row treatment ("6h 23m" … "Saved coding weekly"). */}
+      <div className="mt-6 flex items-baseline justify-between gap-4 border-t border-line pt-3">
+        <span className="inline-flex items-center gap-2 font-mono text-[0.66rem] uppercase tracking-[0.18em] text-faint">
           {live && (
             <span className="relative inline-flex h-1.5 w-1.5">
               <span className="pulse-dot absolute inset-0" aria-hidden />
@@ -38,7 +44,10 @@ function LiveStat({
           )}
           {caption}
         </span>
-      </span>
+        <span className="shrink-0 text-right text-[0.78rem] text-muted">
+          {note}
+        </span>
+      </div>
     </div>
   );
 }
@@ -54,12 +63,14 @@ export function Counters({ initial }: { initial: LiveData }) {
       <LiveStat
         value={formatInt(animatedTokens)}
         caption="total tokens metered"
+        note="across every install"
         ariaLabel={`${formatInt(totals.total_tokens)} tokens metered`}
         live={live}
       />
       <LiveStat
         value={formatUsd(animatedCost)}
         caption="total spend tracked"
+        note="anonymous, in real time"
         ariaLabel={`${formatUsd(totals.total_cost_usd)} total spend`}
         live={live}
       />

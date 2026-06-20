@@ -45,7 +45,7 @@ export function HowItWorks() {
               as="li"
               className="group grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-t border-hairline py-8 transition-colors duration-300 hover:border-ink/20 sm:gap-x-10"
             >
-              <span className="font-mono text-sm text-ink-faint transition-colors duration-300 group-hover:text-signal">
+              <span className="font-mono text-sm text-ink-faint transition-colors duration-300 group-hover:text-ink">
                 {step.n}
               </span>
               <h3 className="text-lg font-medium text-ink">{step.title}</h3>
