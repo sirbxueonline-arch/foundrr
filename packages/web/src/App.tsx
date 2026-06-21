@@ -22,11 +22,13 @@ import { AgentsPanel } from "./components/AgentsPanel";
 import { ServersPanel } from "./components/ServersPanel";
 import { ChangesPage } from "./components/ChangesPage";
 import { StatsPage } from "./components/StatsPage";
+import { SettingsPage } from "./components/SettingsPage";
 import { TerminalTabs } from "./components/TerminalTabs";
 import { ApprovalBanner } from "./components/ApprovalBanner";
 import { TelegramStatus } from "./components/TelegramStatus";
 import { AccessPanel } from "./components/AccessPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Onboarding } from "./components/Onboarding";
 
 function TokenRequired() {
   return (
@@ -189,6 +191,8 @@ function Dashboard() {
     <div className="flex h-screen flex-col" style={{ backgroundColor: "var(--color-void)" }}>
       {/* Crown jewel: a pending approval overlays everything, full width on top. */}
       <ApprovalBanner approvals={approvals} />
+      {/* One-time first-run tour (self-gates on localStorage). */}
+      <Onboarding />
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Desktop rail (holds nav + the de-crammed header controls). */}
@@ -197,12 +201,6 @@ function Dashboard() {
           onNavigate={setPage}
           activeCount={activeCount}
           status={status}
-          cost={cost}
-          model={model}
-          agents={agentsState}
-          onModelChange={onModelChange}
-          onOpenAccess={() => setAccessOpen(true)}
-          telegram={<TelegramStatus />}
           host={host}
         />
 
@@ -240,6 +238,17 @@ function Dashboard() {
               {page === "changes" && <ChangesPage sessions={sessions} />}
               {page === "servers" && <ServersPanel servers={servers} />}
               {page === "stats" && <StatsPage sessions={sessions} cost={cost} now={now} />}
+              {page === "settings" && (
+                <SettingsPage
+                  model={model}
+                  agents={agentsState}
+                  onModelChange={onModelChange}
+                  cost={cost}
+                  status={status}
+                  host={host}
+                  onOpenAccess={() => setAccessOpen(true)}
+                />
+              )}
             </div>
           ) : null}
         </main>

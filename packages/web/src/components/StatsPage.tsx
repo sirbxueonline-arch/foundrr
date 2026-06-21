@@ -154,6 +154,93 @@ function ExportButton() {
   );
 }
 
+interface PlanTier {
+  name: string;
+  price: string;
+  blurb: string;
+}
+
+/** Where the "Get Pro / Team" CTAs point until in-app billing exists. */
+const PRICING_URL = "https://foundrr.online/pricing";
+
+const UPGRADE_TIERS: ReadonlyArray<PlanTier> = [
+  {
+    name: "Pro",
+    price: "$7/mo",
+    blurb: "A reliable leash, cloud history sync across devices, and multi-machine dashboards.",
+  },
+  {
+    name: "Team",
+    price: "$15/seat",
+    blurb: "An approval audit log, roles, SSO, and policy controls for your whole team.",
+  },
+];
+
+function PlanCard({ tier }: { tier: PlanTier }) {
+  return (
+    <div className="panel flex flex-col gap-2 p-5">
+      <div className="flex items-baseline gap-2">
+        <span className="text-base font-medium" style={{ color: "var(--color-text)" }}>
+          {tier.name}
+        </span>
+        <span className="mono text-xs" style={{ color: "var(--color-muted)" }}>
+          {tier.price}
+        </span>
+      </div>
+      <p className="text-[0.8125rem] leading-relaxed" style={{ color: "var(--color-muted)" }}>
+        {tier.blurb}
+      </p>
+      <a
+        href={PRICING_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="btn-primary mt-2 self-start"
+      >
+        Get {tier.name}
+      </a>
+    </div>
+  );
+}
+
+/** Cursor-style plan band: two upgrade cards + the current "Local · Free" plan. */
+function PlanSection() {
+  return (
+    <section aria-label="Plan">
+      <h3 className="section-label mb-3">Plan</h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {UPGRADE_TIERS.map((tier) => (
+          <PlanCard key={tier.name} tier={tier} />
+        ))}
+      </div>
+      <div className="panel mt-3 flex flex-wrap items-center justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-medium" style={{ color: "var(--color-text)" }}>
+              Local
+            </span>
+            <span
+              className="mono rounded-full px-2 py-0.5 text-[0.5625rem] uppercase tracking-wider"
+              style={{
+                color: "var(--color-muted)",
+                backgroundColor: "var(--color-inset)",
+                border: "1px solid var(--color-line)",
+              }}
+            >
+              Current
+            </span>
+            <span className="text-xs" style={{ color: "var(--color-faint)" }}>
+              · Free
+            </span>
+          </div>
+          <p className="mt-1 text-[0.8125rem]" style={{ color: "var(--color-muted)" }}>
+            Everything on this machine — agents, servers, terminal, and the leash. Yours forever.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function StatsPage({ sessions, cost, now }: StatsPageProps) {
   const active = sessions.filter((s) => s.status === "active" || s.status === "waiting");
   const ended = sessions.filter((s) => s.status === "ended");
@@ -177,6 +264,8 @@ export function StatsPage({ sessions, cost, now }: StatsPageProps) {
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-1">
+      <PlanSection />
+
       <section aria-label="Activity">
         <h3 className="section-label mb-3">Activity</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
