@@ -48,13 +48,14 @@ function coercePlan(value: string | null | undefined): LicensePlan {
   return value && PLANS.has(value as LicensePlan) ? (value as LicensePlan) : "free";
 }
 
+/** Resolve the license authority base URL (env override → default). */
+function licenseBase(): string {
+  return (process.env["FOUNDRR_LICENSE_URL"] ?? LICENSE_DEFAULT_URL).replace(/\/+$/, "");
+}
+
 /** Resolve the verify endpoint (env override → default). */
 function verifyUrl(): string {
-  const base = (process.env["FOUNDRR_LICENSE_URL"] ?? LICENSE_DEFAULT_URL).replace(
-    /\/+$/,
-    "",
-  );
-  return `${base}${LICENSE_VERIFY_PATH}`;
+  return `${licenseBase()}${LICENSE_VERIFY_PATH}`;
 }
 
 /** Show the head + last 4 of a key so the user can recognize it without leaking it. */
@@ -153,6 +154,38 @@ export class LicenseService {
   clear(): Entitlement {
     clearLicense(this.db);
     return this.entitlement();
+  }
+
+  /**
+   * Open a Stripe Customer Portal session for the stored key and return its URL,
+   * so the user can cancel / change / update billing. The full key stays on the
+   * daemon — only the resulting one-time portal URL is handed to the dashboard.
+   * Returns null when there's no key or the authority is unreachable.
+   */
+  async billingPortalUrl(): Promise<string | null> {
+    const row = getLicense(this.db);
+    if (!row.licenseKey) {
+      return null;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LICENSE_REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${licenseBase()}/api/billing/portal`, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ key: row.licenseKey }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        return null;
+      }
+      const data = (await res.json()) as { url?: unknown };
+      return typeof data.url === "string" ? data.url : null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /**

@@ -86,6 +86,21 @@ export async function verifyLicense(key: string): Promise<LicenseRecord | null> 
   return rows[0] ?? null;
 }
 
+/**
+ * Resolve the Stripe customer id for a license key. Used to open a Customer
+ * Portal session so the buyer can cancel / change / update billing themselves.
+ * Returns null when the key is unknown or has no customer on file.
+ */
+export async function getCustomerIdByKey(key: string): Promise<string | null> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/licenses?license_key=eq.${encodeURIComponent(key)}&select=stripe_customer_id`,
+    { headers: authHeaders() },
+  );
+  if (!res.ok) return null;
+  const rows = (await res.json()) as { stripe_customer_id: string | null }[];
+  return rows[0]?.stripe_customer_id ?? null;
+}
+
 export interface UpsertLicenseParams {
   subscriptionId: string;
   customerId: string | null;

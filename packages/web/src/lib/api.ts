@@ -497,3 +497,14 @@ export function saveLicense(key: string): Promise<Entitlement> {
 export function removeLicense(): Promise<Entitlement> {
   return apiDelete<Entitlement>("/api/license");
 }
+
+/**
+ * Open a Stripe Customer Portal session for the stored license (cancel, switch
+ * plan, update card, invoices). Resolves with the one-time portal URL; the
+ * daemon proxies with the full key so it never reaches the browser. Throws
+ * `ApiError` (502 when there's no key / the authority is down) so the caller
+ * can surface it.
+ */
+export function openBillingPortal(): Promise<{ url: string }> {
+  return apiPost<{ url: string }>("/api/license/portal");
+}

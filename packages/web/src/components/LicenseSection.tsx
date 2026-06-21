@@ -10,7 +10,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { Entitlement, LicensePlan } from "@mission-control/shared";
 
-import { ApiError, getLicense, removeLicense, saveLicense } from "../lib/api";
+import { ApiError, getLicense, openBillingPortal, removeLicense, saveLicense } from "../lib/api";
 import { useEntitlement } from "../lib/useEntitlement";
 
 const PRICING_URL = "https://foundrr.online/pricing";
@@ -132,6 +132,23 @@ export function LicenseSection() {
     }
   };
 
+  const manage = async (): Promise<void> => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { url } = await openBillingPortal();
+      // Stripe-hosted portal: cancel, switch plan, update card, invoices.
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      setError(
+        e instanceof ApiError ? `Couldn't open billing (${e.status}).` : "Couldn't open billing.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // Unknown daemon state (older build / fetch error) — render nothing.
   if (!ent) return null;
 
@@ -170,19 +187,27 @@ export function LicenseSection() {
 
         {licensed ? (
           <Row
-            label="License key"
+            label="Subscription"
             description={
               ent.periodEnd
-                ? `Renews ${new Date(ent.periodEnd).toLocaleDateString()}.`
-                : "Tied to your subscription."
+                ? `Renews ${new Date(ent.periodEnd).toLocaleDateString()}. Manage opens Stripe — cancel or switch anytime.`
+                : "Manage billing on Stripe. Remove just unlinks the key from this machine."
             }
           >
             <span className="flex items-center gap-2">
               <code className="mono text-[0.6875rem]" style={{ color: "var(--color-muted)" }}>
                 {ent.maskedKey}
               </code>
+              <button
+                type="button"
+                onClick={() => void manage()}
+                disabled={busy}
+                className="pill pill-cool"
+              >
+                {busy ? "…" : "MANAGE"}
+              </button>
               <button type="button" onClick={() => void remove()} disabled={busy} className="pill">
-                {busy ? "…" : "REMOVE"}
+                REMOVE
               </button>
             </span>
           </Row>

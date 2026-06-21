@@ -50,4 +50,19 @@ export function registerLicenseRoutes(app: FastifyInstance, ctx: AppContext): vo
       return reply.code(500).send({ error: "failed to clear license" });
     }
   });
+
+  // Open a Stripe Customer Portal session for the stored key — the user manages
+  // (and cancels) their subscription there. 502 when no key / authority down.
+  app.post("/api/license/portal", guard, async (req, reply) => {
+    try {
+      const url = await ctx.licenseService.billingPortalUrl();
+      if (!url) {
+        return reply.code(502).send({ error: "could not open billing portal" });
+      }
+      return reply.send({ url });
+    } catch (err) {
+      req.log.error({ err }, "api/license/portal failed");
+      return reply.code(500).send({ error: "failed to open billing portal" });
+    }
+  });
 }
