@@ -16,6 +16,7 @@ import { hasToken } from "./lib/token";
 import { getConfig, getAgents, type LaunchableAgent } from "./lib/api";
 import { useStream } from "./lib/useStream";
 import { useNow } from "./lib/useNow";
+import { EntitlementProvider } from "./lib/useEntitlement";
 import { Header } from "./components/Header";
 import { Sidebar, NAV, type Page } from "./components/Sidebar";
 import { AgentsPanel } from "./components/AgentsPanel";
@@ -72,7 +73,11 @@ function AppShell() {
   if (!hasToken()) {
     return <TokenRequired />;
   }
-  return <Dashboard />;
+  return (
+    <EntitlementProvider>
+      <Dashboard />
+    </EntitlementProvider>
+  );
 }
 
 /** Mobile bottom tab bar — the same pages as the desktop rail. */

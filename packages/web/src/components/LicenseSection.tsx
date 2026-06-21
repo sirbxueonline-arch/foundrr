@@ -11,6 +11,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Entitlement, LicensePlan } from "@mission-control/shared";
 
 import { ApiError, getLicense, removeLicense, saveLicense } from "../lib/api";
+import { useEntitlement } from "../lib/useEntitlement";
 
 const PRICING_URL = "https://foundrr.online/pricing";
 
@@ -70,6 +71,7 @@ function PlanBadge({ plan }: { plan: LicensePlan }) {
 }
 
 export function LicenseSection() {
+  const { refresh } = useEntitlement();
   const [ent, setEnt] = useState<Entitlement | null>(null);
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
@@ -99,6 +101,8 @@ export function LicenseSection() {
       const e = await saveLicense(trimmed);
       setEnt(e);
       setKey("");
+      // Propagate to the rest of the app (Overview unlocks, badges update) live.
+      void refresh();
       if (!e.active) {
         setError(
           e.status === "not_found"
@@ -120,6 +124,7 @@ export function LicenseSection() {
     try {
       const e = await removeLicense();
       setEnt(e);
+      void refresh();
     } catch (e) {
       setError(e instanceof ApiError ? `Failed (${e.status}).` : "Failed.");
     } finally {

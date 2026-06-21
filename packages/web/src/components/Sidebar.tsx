@@ -1,15 +1,21 @@
 /**
- * Sidebar — the desktop navigation rail, built to match Cursor's dashboard
- * (pulled from Mobbin): a neutral letter-avatar identity block with a small
- * connection dot, a monochrome nav grouped by whitespace with a subtle filled
- * "selected" state, and nothing pinned at the foot. All preferences live on the
- * Settings page, so the rail is pure navigation — Cursor's frame.
+ * Sidebar — the desktop navigation rail, built to match Cursor's dashboard: a
+ * neutral letter-avatar identity block with a small connection dot, a monochrome
+ * nav with a subtle filled "selected" state, an even vertical rhythm on every
+ * row, and Settings pinned to the very bottom of the rail. The live-work pages
+ * (Agents/Changes/Servers/Terminal) and Overview flow as one group; a single
+ * hairline divider sets the pinned Settings apart — one separator, not scattered
+ * gaps. That's Cursor's frame: pure navigation, preferences live on the Settings
+ * page. The identity block also carries a small plan badge once a paid license
+ * is active, so the plan is visible app-wide — not only on the Settings page.
  *
  * Shared with mobile: the `Page` type and `NAV` list are exported so the mobile
- * bottom bar renders the same pages.
+ * bottom bar renders the same pages, in the same order.
  */
 import type { ReactNode } from "react";
+import type { LicensePlan } from "@mission-control/shared";
 import type { StreamStatus } from "../lib/useStream";
+import { useEntitlement, isPaid } from "../lib/useEntitlement";
 
 export type Page = "agents" | "changes" | "servers" | "terminal" | "stats" | "settings";
 
@@ -53,7 +59,11 @@ const ICON = {
   ),
 } as const;
 
-/** The page list, shared between the desktop rail and the mobile bottom bar. */
+/**
+ * The page list, shared between the desktop rail and the mobile bottom bar. This
+ * is the single source of truth for page order, labels, and icons — the mobile
+ * bar (App.tsx) maps it directly, so it must never be mutated or reordered here.
+ */
 export const NAV: readonly NavItem[] = [
   { id: "agents", label: "Agents", icon: ICON.agents },
   { id: "changes", label: "Changes", icon: ICON.changes },
@@ -62,6 +72,23 @@ export const NAV: readonly NavItem[] = [
   { id: "stats", label: "Overview", icon: ICON.stats },
   { id: "settings", label: "Settings", icon: ICON.settings },
 ];
+
+/**
+ * Pages pinned to the foot of the rail (Cursor's "preferences at the bottom"
+ * frame). A typed Set keeps the partition data-driven and reorder-resilient: the
+ * rail derives both stacks from NAV by membership, so adding another pinned page
+ * later is a one-line change here with no JSX edit. Overview is deliberately NOT
+ * in here — it's a dashboard view, not preferences, so it stays in the main flow.
+ */
+const FOOTER_PAGES: ReadonlySet<Page> = new Set<Page>(["settings"]);
+
+/** Short label shown in the identity plan badge (free is never shown). */
+const PLAN_LABEL: Record<LicensePlan, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  team: "Team",
+};
 
 const CONN: Record<StreamStatus, { label: string; dot: string }> = {
   open: { label: "Connected", dot: "var(--color-ok)" },
@@ -97,9 +124,79 @@ interface SidebarProps {
   host: string;
 }
 
+/**
+ * One nav row. Monochrome by default, a subtle inset fill plus an inset teal
+ * (--color-cool) left edge when selected — the edge is the non-color-dependent
+ * affordance the very-faint inset fill can't carry on its own, and it draws no
+ * extra layout box (it's an inset box-shadow, not a border). The icon brightens
+ * to ink on selection. The active-count badge is driven by an explicit `count`
+ * prop so the badge logic lives in exactly one place (the caller decides which
+ * row gets a count). Rhythm — the gap between rows — is owned by the parent flex
+ * column, so every row sits on the same beat with no per-item margins.
+ */
+function NavButton({
+  item,
+  selected,
+  count,
+  onNavigate,
+}: {
+  item: NavItem;
+  selected: boolean;
+  /** Badge value for this row; 0 (or negative) renders no badge. */
+  count: number;
+  onNavigate: (page: Page) => void;
+}) {
+  const showCount = count > 0;
+  return (
+    <button
+      type="button"
+      aria-current={selected ? "page" : undefined}
+      onClick={() => onNavigate(item.id)}
+      className="nav-item flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm"
+      style={{
+        color: selected ? "var(--color-text)" : "var(--color-muted)",
+        fontWeight: selected ? 500 : 400,
+        // Selected: faint inset fill + an inset teal edge so the active row is
+        // legible without relying on the low-contrast fill alone (a11y).
+        ...(selected
+          ? {
+              backgroundColor: "var(--color-inset)",
+              boxShadow: "inset 2px 0 0 0 var(--color-cool)",
+            }
+          : {}),
+      }}
+    >
+      <span style={{ color: selected ? "var(--color-text)" : "var(--color-faint)" }}>
+        <NavGlyph>{item.icon}</NavGlyph>
+      </span>
+      <span className="flex-1 text-left">{item.label}</span>
+      {showCount ? (
+        <span className="mono text-[0.625rem] tabular-nums" style={{ color: "var(--color-faint)" }}>
+          {count}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
 export function Sidebar({ page, onNavigate, activeCount, status, host }: SidebarProps) {
   const conn = CONN[status];
   const initial = host?.trim().charAt(0).toUpperCase() || "F";
+
+  // Plan badge — visible app-wide once a paid license is active (not just on the
+  // Settings page). Reads the shared entitlement context; free/unknown shows none.
+  const { entitlement } = useEntitlement();
+  const planLabel = isPaid(entitlement) && entitlement ? PLAN_LABEL[entitlement.plan] : null;
+
+  // Cursor's split, derived from NAV by Set membership (reorder-resilient, and a
+  // `.filter()` of NavItem[] always yields NavItem[] — never undefined, so no
+  // index/undefined guard is needed under noUncheckedIndexedAccess). NAV stays
+  // the single source of truth; we only partition a *view* of it here.
+  const topItems = NAV.filter((item) => !FOOTER_PAGES.has(item.id));
+  const footerItems = NAV.filter((item) => FOOTER_PAGES.has(item.id));
+
+  // The agents row is the only one that shows a live count.
+  const countFor = (id: Page): number => (id === "agents" ? activeCount : 0);
 
   return (
     <aside
@@ -127,51 +224,61 @@ export function Sidebar({ page, onNavigate, activeCount, status, host }: Sidebar
           />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium" style={{ color: "var(--color-text)" }}>
-            Foundrr
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-sm font-medium" style={{ color: "var(--color-text)" }}>
+              Foundrr
+            </p>
+            {planLabel ? (
+              <span
+                className="mono shrink-0 rounded-full px-1.5 py-px text-[0.5rem] uppercase tracking-wider"
+                style={{
+                  color: "var(--color-signal-ink)",
+                  border: "1px solid color-mix(in srgb, var(--color-signal) 45%, transparent)",
+                }}
+              >
+                {planLabel}
+              </span>
+            ) : null}
+          </div>
           <p className="truncate text-[0.6875rem]" style={{ color: "var(--color-faint)" }}>
             {host ? `Local · ${host}` : "Local"}
           </p>
         </div>
       </div>
 
-      {/* Nav — monochrome, grouped by whitespace; selected = subtle inset fill. */}
+      {/* Nav — one even rhythm via the column gap. Live-work + Overview flow as a
+          single group at the top; the pinned pages sit at the foot, set off by a
+          single hairline (the foot section's own `border-t` — no extra spacer
+          element, no bespoke margins). Both stacks share one NavButton. */}
       <nav className="flex flex-1 flex-col px-2 pb-3" aria-label="Pages">
-        {NAV.map((item) => {
-          const selected = page === item.id;
-          const showCount = item.id === "agents" && activeCount > 0;
-          // Cursor separates nav groups with whitespace: the Overview + Settings
-          // pages sit a little apart from the live-work pages above.
-          const groupStart = item.id === "stats" || item.id === "settings";
-          return (
-            <button
+        <div className="flex flex-col gap-0.5">
+          {topItems.map((item) => (
+            <NavButton
               key={item.id}
-              type="button"
-              aria-current={selected ? "page" : undefined}
-              onClick={() => onNavigate(item.id)}
-              className={`nav-item flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm ${groupStart ? "mt-3" : "mt-0.5"}`}
-              style={{
-                color: selected ? "var(--color-text)" : "var(--color-muted)",
-                fontWeight: selected ? 500 : 400,
-                ...(selected ? { backgroundColor: "var(--color-inset)" } : {}),
-              }}
-            >
-              <span style={{ color: selected ? "var(--color-text)" : "var(--color-faint)" }}>
-                <NavGlyph>{item.icon}</NavGlyph>
-              </span>
-              <span className="flex-1 text-left">{item.label}</span>
-              {showCount ? (
-                <span
-                  className="mono text-[0.625rem] tabular-nums"
-                  style={{ color: "var(--color-faint)" }}
-                >
-                  {activeCount}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
+              item={item}
+              selected={page === item.id}
+              count={countFor(item.id)}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+
+        {footerItems.length > 0 ? (
+          <div
+            className="mt-auto flex flex-col gap-0.5 border-t pt-2"
+            style={{ borderTopColor: "var(--color-line)" }}
+          >
+            {footerItems.map((item) => (
+              <NavButton
+                key={item.id}
+                item={item}
+                selected={page === item.id}
+                count={countFor(item.id)}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        ) : null}
       </nav>
     </aside>
   );
